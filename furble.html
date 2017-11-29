@@ -2,7 +2,6 @@
 <head>
 <meta charset="utf-8" />
 <title>Furby WebBluetooth</title>
-<script src"furble.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
     body { font-family: sans}
@@ -12,15 +11,16 @@
 
     #out { position: absolute; bottom: 0; left: 0; background: #eee; overflow: scroll; width: 100%; height: 22em; padding: 0.5em }
 
-
-progress { width: 100%; display:none}
+    h1 { font-size: 15pt; margin: 0 0 0.3em 0}
+    progress { width: 100%; display:none}
 </style>
 </head>
 <body>
 
 
 <div class='row'>
-    <div>FurBLE Demo</div> 
+    <div><h1>FurBLE Demo</h1>
+    State: <span id="state">Not connected</span></div>
     <button id="connbtn" onclick="doConnectDisconnect()">Connect</button>
 </div>
 
@@ -38,6 +38,9 @@ progress { width: 100%; display:none}
 </div>
 
 <div id="out" style="white-space:pre">Console Log
-          
-        
 </div>
+<script>
+    var s = document.createElement('script');
+    s.src='furble.js?' + Math.random();
+    document.body.appendChild(s);
+</script>

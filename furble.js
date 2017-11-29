@@ -20,26 +20,25 @@ var file_transfer_modes = {
     6: 'FileReceivedErr'
 }
 
+function flipDict(d) {
+    let flipped = {};
+    for (let k in d) {
+      let v = d[k];
+      flipped[v] = k;
+    }
+    return flipped;
+}
+
+var uuid_lookup = flipDict(furby_uuids);
+var file_transfer_lookup = flipDict(file_transfer_modes);
 var device;
 var isConnected = false;
-
-var uuid_lookup = {};
-for (var name in furby_uuids) {
-  var uuid = furby_uuids[name];
-  uuid_lookup[uuid] = name;
-}
-
-var file_transfer_lookup = {};
-for (var mode in file_transfer_modes) {
-    file_transfer_lookup[file_transfer_modes[mode]] = mode;
-}
-
+var isTransferring = false;
 var furby_chars = {};
-
 var gp_listen_callbacks = [];
 
 function log() {
-    bits = []
+    let bits = []
     for (let arg of arguments) {
         if (Uint8Array.prototype.isPrototypeOf(arg))
             bits.push(buf2Hex(arg))
@@ -48,20 +47,25 @@ function log() {
     }
     console.log(bits.join(' '));
 }
+
 function sendGPCmd(data, prefix) {
-    furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(data));
-    var s = ['Sending data to GeneralPlusWrite', data]
-    if (prefix)
-        s.push([' expecting prefix of ', prefix]);
-    log.apply(s);
     return new Promise((resolve, reject) => {
+        let s = ['Sending data to GeneralPlusWrite', data];
+        if (prefix)
+            s.push([' expecting prefix of ', prefix]);
+        log.apply(s);
         let hnd = addGPListenCallback(buf => {
             removeGPListenCallback(hnd);
             resolve(buf);
         }, prefix);
+        furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(data)).then(() => {
+        
+        }).catch(error => {
+            removeGPListenCallback(hnd);
+            reject(error);
+        });
     });
 }
-
 
 function addGPListenCallback(fn, prefix) {
     var handle = gp_listen_callbacks.length;
@@ -85,32 +89,41 @@ function triggerAction(input, index, subindex, specific) {
     return sendGPCmd(data);
 }
 
-async function loadDLC(slot) {
-    let buf = await sendGPCmd([0x60, slot], [0xdc]);
+function loadDLC(slot) {
+    return sendGPCmd([0x60, slot], [0xdc]);
 }
 
-async function activateDLC(slot) {
-    let buf = await sendGPCmd([0x61, slot], [0xdc]);
+function activateDLC(slot) {
+    return sendGPCmd([0x61, slot], [0xdc]);
 }
 
-async function deactivateDLC(slot) {
-    let buf = await sendGPCmd([0x62, slot], [0xdc]);
+function deactivateDLC(slot) {
+    return sendGPCmd([0x62, slot], [0xdc]);
 }
 
 async function getDLCInfo() {
-    let buf = await sendGPCmd([0x72], [0x72]);
+    return await sendGPCmd([0x72], [0x72]);
 }
 
-async function getDLCSlotInfo(slot) {
-    let buf = await sendGPCmd([0x73], [0x73]);
+async function getAllDLCInfo() {
+    let allSlotsInfo = await getDLCInfo();
+    var slots = [];
+    for (let i=0; i<16; i++) {
+        slots[i] = await getDLCSlotInfo(i);
+    }
 }
 
-async function deleteDLC(slot) {
-    let buf = await sendGPCmd([0x74], [0x74]);
+function getDLCSlotInfo(slot) {
+    return sendGPCmd([0x73], [0x73]);
+}
+
+function deleteDLC(slot) {
+    return sendGPCmd([0x74], [0x74]);
 }
 
 async function getFirmwareVersion() {
     let buf = await sendGPCmd([0xfe], [0xfe]);
+    return buf;
 }
 
 async function setAntennaColor(r,g,b) {
@@ -135,22 +148,30 @@ async function fetchAndUploadDLC(dlcurl) {
     }
 
 }
-var encoder = new TextEncoder('utf-8');
+
+function startKeepAlive() {
+    return setInterval(async () => {
+        let buf = await sendGPCmd([0x20, 0x06], [0x22]);
+        log('Got ImHereSignal', buf);
+    }, 3000);
+}
 
 function uploadDLC(dlcbuf, filename, progresscb) {
+    if (isTransferring) return Promise.reject('Transfer already in progress');
     let size = dlcbuf.byteLength;
     let initcmd = [0x50, 0x00, 
         size >> 16 & 0xff, size >> 8 & 0xff, size & 0xff, 
         2];
+    let encoder = new TextEncoder('utf-8');
     initcmd = initcmd.concat(Array.from(encoder.encode(filename)));
     initcmd = initcmd.concat([0,0]);
     let isTransferring = false;
     let sendPos = 0;
     let chunkSize = 20;
-    let transferNextChunk = function() {
+    let transferNextChunk = () => {
         if (!isTransferring)
             return;
-        var chunk = dlcbug.slice(sendPos, sendPos + chunkSize);
+        let chunk = dlcbug.slice(sendPos, sendPos + chunkSize);
         sendPos += chunk.byteLength;
         if (chunk.byteLength > 0) {
             furby_chars.FileWrite.writeValue(chunk);
@@ -179,11 +200,10 @@ function uploadDLC(dlcbuf, filename, progresscb) {
             }
         }, [0x24]);
         log('Sending init DLC: ', initcmd);
-        furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(initcmd));
+        furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(initcmd)).catch(error => reject(error));
     });
-    
-
 }
+
 function prefixMatches(prefix, buf) {
     if (typeof(prefix) == 'undefined')
         return true;
@@ -203,6 +223,7 @@ function onDisconnected() {
 
 function handleGeneralPlusResponse(event) {
     let buf = event.target.value;
+    log('Got GeneralPlus response', buf)
     for (let handle in gp_listen_callbacks) {
         [cb, prefix] = gp_listen_callbacks[handle];
         if (prefixMatches(prefix, buf))
@@ -243,7 +264,6 @@ async function doDisconnect() {
   }
 
 async function doConnect() {
-    try {
       log('Requesting Bluetooth Devices with Furby name...');
   
       device = await navigator.bluetooth.requestDevice({
@@ -277,13 +297,9 @@ async function doConnect() {
       }
   
       // enable notifications
-      chars.GeneralPlusListen.addEventListener('characteristicvaluechanged', handleGeneralPlusResponse);
-      await chars.GeneralPlusListen.startNotifications();
+      furby_chars.GeneralPlusListen.addEventListener('characteristicvaluechanged', handleGeneralPlusResponse);
+      await furby_chars.GeneralPlusListen.startNotifications();
   
-      chars.NordicListen.addEventListener('characteristicvaluechanged', handleNordicNotification);
-      await chars.NordicListen.startNotifications();
-
-    } catch(error) {
-      log('Argh! ' + error);
-    }
+      //furby_chars.NordicListen.addEventListener('characteristicvaluechanged', handleNordicNotification);
+      //await furby_chars.NordicListen.startNotifications();
   }
