@@ -36,12 +36,15 @@ var isConnected = false;
 var isTransferring = false;
 var furby_chars = {};
 var gp_listen_callbacks = [];
+var lastResponse;
+var nordicListener = null;
+
 
 function log() {
     let bits = []
     for (let arg of arguments) {
-        if (Uint8Array.prototype.isPrototypeOf(arg))
-            bits.push(buf2Hex(arg))
+        if (DataView.prototype.isPrototypeOf(arg))
+            bits.push(buf2hex(arg))
         else
             bits.push(''+arg)
     }
@@ -85,7 +88,7 @@ function triggerAction(input, index, subindex, specific) {
     else if (!specific)
         data = [0x12, 0, input, index, subindex];
     else 
-        data = [0x13, 0, input, index, subindex, speicifc];
+        data = [0x13, 0, input, index, subindex, specific];
     return sendGPCmd(data);
 }
 
@@ -107,6 +110,7 @@ async function getDLCInfo() {
 
 async function getAllDLCInfo() {
     let allSlotsInfo = await getDLCInfo();
+    console.log(allSlotsInfo)
     var slots = [];
     for (let i=0; i<16; i++) {
         slots[i] = await getDLCSlotInfo(i);
@@ -123,6 +127,7 @@ function deleteDLC(slot) {
 
 async function getFirmwareVersion() {
     let buf = await sendGPCmd([0xfe], [0xfe]);
+    log('Firmware version ', buf.getUint8(1));
     return buf;
 }
 
@@ -136,15 +141,24 @@ function cycleDebug() {
 
 async function fetchAndUploadDLC(dlcurl) {
     let response = await fetch(dlcurl);
+    console.log('Fetched DLC from server');
     let buf = await response.arrayBuffer();
-    let c = 0;
+    var progress = document.getElementById('dlcprogress');
+    progress.max = buf.byteLength;
     try {
+        progress.style.display = 'block';
+        let c = 0;
         await uploadDLC(buf, 'DLC1234.DLC', (current, total) => {
-            if (c++ % 100 == 0)
+            if (c++ % 100 == 0) {
+                progress.value = current;
                 log(`transfer: ${current}/${total}`);
+            }
         });
     } catch (e) {
-        log('Upload DLC error: ', e);
+        log('Download failed');
+        console.log(e);
+    } finally {
+        progress.style.display = 'none';
     }
 
 }
@@ -152,12 +166,12 @@ async function fetchAndUploadDLC(dlcurl) {
 function startKeepAlive() {
     return setInterval(async () => {
         let buf = await sendGPCmd([0x20, 0x06], [0x22]);
-        log('Got ImHereSignal', buf);
+        //log('Got ImHereSignal', buf);
     }, 3000);
 }
 
 function uploadDLC(dlcbuf, filename, progresscb) {
-    if (isTransferring) return Promise.reject('Transfer already in progress');
+    if (window.isTransferring) return Promise.reject('Transfer already in progress');
     let size = dlcbuf.byteLength;
     let initcmd = [0x50, 0x00, 
         size >> 16 & 0xff, size >> 8 & 0xff, size & 0xff, 
@@ -165,23 +179,33 @@ function uploadDLC(dlcbuf, filename, progresscb) {
     let encoder = new TextEncoder('utf-8');
     initcmd = initcmd.concat(Array.from(encoder.encode(filename)));
     initcmd = initcmd.concat([0,0]);
-    let isTransferring = false;
+    isTransferring = false;
     let sendPos = 0;
     let chunkSize = 20;
-    let transferNextChunk = () => {
-        if (!isTransferring)
-            return;
-        let chunk = dlcbug.slice(sendPos, sendPos + chunkSize);
-        sendPos += chunk.byteLength;
-        if (chunk.byteLength > 0) {
-            furby_chars.FileWrite.writeValue(chunk);
-            progresscb(sendPos, size);
-            setTimeout(transferNextChunk, 16);
-        } else {
-            isTransferring = false;
-        }
-    }
+    
     return new Promise((resolve, reject) => {
+
+        let transferNextChunk = () => {
+            if (!isTransferring)
+                return;
+            let chunk = dlcbuf.slice(sendPos, sendPos + chunkSize);
+            sendPos += chunk.byteLength;
+            if (chunk.byteLength > 0) {
+                furby_chars.FileWrite.writeValue(chunk).then(() => {
+                    progresscb(sendPos, size);
+                    setTimeout(transferNextChunk, 20);
+                }).catch(error => {
+                    isTransferring = false;
+                    removeGPListenCallback(hnd)
+                    console.log(error);
+                    reject(error);
+                });
+                
+            } else {
+                isTransferring = false;
+            }
+        }
+
         let hnd = addGPListenCallback((buf) => {
             let fileMode = buf.getUint8(1);
             log('Got FileWrite callback: ' + file_transfer_modes[fileMode]);
@@ -204,6 +228,7 @@ function uploadDLC(dlcbuf, filename, progresscb) {
     });
 }
 
+
 function prefixMatches(prefix, buf) {
     if (typeof(prefix) == 'undefined')
         return true;
@@ -217,13 +242,17 @@ function prefixMatches(prefix, buf) {
 
 function onDisconnected() {
     log('> Bluetooth Device disconnected');
+    clearInterval(keepAliveTimer);
     isConnected = false;
     document.getElementById('connbtn').textContent = 'Connect';
 }
 
 function handleGeneralPlusResponse(event) {
     let buf = event.target.value;
-    log('Got GeneralPlus response', buf)
+    if (buf.getUint8(0) != 0x22) // ImHereSignal Keepalive
+        log('Got GeneralPlus response', buf);
+    lastResponse = buf;
+    
     for (let handle in gp_listen_callbacks) {
         [cb, prefix] = gp_listen_callbacks[handle];
         if (prefixMatches(prefix, buf))
@@ -231,9 +260,24 @@ function handleGeneralPlusResponse(event) {
     }
 }
 
+function handleNordicNotification(event) {
+    let buf = event.target.value;
+    log('Nordic listen', buf);
+    if (nordicListener) {
+        nordicListener(buf);
+    }
+}
+
+function setNordicListener(fn) {
+    window.nordicListener = fn;
+}
+
+function removeNordicListener(fn) {
+    window.nordicListener = null;
+}
 function buf2hex(dv) {
     var s = '';
-    if (Uint8Array.prototype.isPrototypeOf(dv)) {
+    if (DataView.prototype.isPrototypeOf(dv)) {
         for (var i=0; i < dv.byteLength; i++) {
             s += ('0' + dv.getUint8(i).toString(16)).substr(-2);
         }
@@ -300,6 +344,7 @@ async function doConnect() {
       furby_chars.GeneralPlusListen.addEventListener('characteristicvaluechanged', handleGeneralPlusResponse);
       await furby_chars.GeneralPlusListen.startNotifications();
   
-      //furby_chars.NordicListen.addEventListener('characteristicvaluechanged', handleNordicNotification);
-      //await furby_chars.NordicListen.startNotifications();
+      keepAliveTimer = startKeepAlive();
+      furby_chars.NordicListen.addEventListener('characteristicvaluechanged', handleNordicNotification);
+      await furby_chars.NordicListen.startNotifications();
   }
