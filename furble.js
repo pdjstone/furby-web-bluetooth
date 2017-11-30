@@ -47,7 +47,9 @@ function log() {
         else
             bits.push(''+arg)
     }
-    console.log(bits.join(' '));
+    var s = bits.join(' ')
+    console.log(s);
+    document.getElementById('out').textContent += s + "\n";
 }
 
 function sendGPCmd(data, prefix) {
@@ -334,15 +336,19 @@ function sleep(t) {
 
 async function doConnect() {
     log('Requesting Bluetooth Devices with Furby name...');
-
-    device = await navigator.bluetooth.requestDevice({
-        filters: [{ name: 'Furby'}], 
-        optionalServices: ['generic_access', 'device_information', fluff_service]});
-
-    device.addEventListener('gattserverdisconnected', onDisconnected);
-
-    log('Connecting to GATT Server...');
-    const server = await device.gatt.connect();
+    var server;
+    try {
+        device = await navigator.bluetooth.requestDevice({
+            filters: [{ name: 'Furby'}], 
+            optionalServices: ['generic_access', 'device_information', fluff_service]});
+        device.addEventListener('gattserverdisconnected', onDisconnected);
+        log('Connecting to GATT Server...');
+        server = await device.gatt.connect();
+    } catch (e) {
+        log('failed to connect device: ' + e.message);
+        console.log(e);
+        return;
+    }
 
     isConnected = true;
     document.getElementById('connbtn').textContent = 'Disconnect';

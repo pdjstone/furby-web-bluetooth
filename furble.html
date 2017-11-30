@@ -10,7 +10,7 @@
     .row { display: flex; margin: .6em 0; align-items: center }
     .row button, .row input[type=range] { flex-grow: 1; margin: .2em; height: 3em}
 
-    #out { display: none; position: absolute; bottom: 0; left: 0; background: #eee; overflow: scroll; width: 100%; height: 12em; padding: 0.5em }
+    #out { position: absolute; bottom: 0; left: 0; background: #eee; overflow: scroll; width: 100%; height: 12em; padding: 0.5em }
 
     h1 { font-size: 15pt; margin: 0 0 0.3em 0}
     progress { width: 100%; display:none}
@@ -42,8 +42,9 @@
 <div class='row'>
     <input id='dlcname' value='dlc/tu003410_ctxlogo.dlc'><button onclick="fetchAndUploadDLC(document.getElementById('dlcname').value)">Upload</button>
 </div>
-<progress id='dlcprogress'/>
+<progress id='dlcprogress'></progress>
 <div id="out" style="white-space:pre">Console Log
+
 </div>
 <script>
     var s = document.createElement('script');
@@ -51,3 +52,6 @@
     document.body.appendChild(s);
     s.onload = () => log('ready!');
 </script>
+
+</body>
+</html>
