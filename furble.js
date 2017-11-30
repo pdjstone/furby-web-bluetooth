@@ -179,7 +179,7 @@ async function fetchAndUploadDLC(dlcurl) {
             if (c % 100 == 0) 
                 progress.value = current;
             if (c % 500 == 0)
-                log(`transfer: ${current}/${total}`);
+                console.log(`transfer: ${current}/${total}`);
             c++;
         });
     } catch (e) {
@@ -223,6 +223,8 @@ function uploadDLC(dlcbuf, filename, progresscb) {
     initcmd = initcmd.concat([0,0]);
     isTransferring = false;
     let sendPos = 0;
+    let packetsSent = 0;
+    let packetsAckd = 0;
     let rxPackets = 0;
     let CHUNK_SIZE = 20;
     let MAX_BUFFERED_PACKETS = 10;
@@ -240,6 +242,7 @@ function uploadDLC(dlcbuf, filename, progresscb) {
             if (chunk.byteLength > 0) {
                 furby_chars.FileWrite.writeValue(chunk).then(() => {
                     sendPos += chunk.byteLength;
+                    packetsSent++;
                     if (progresscb)
                         progresscb(sendPos, size);
                     setTimeout(transferNextChunk, 1);
@@ -266,6 +269,7 @@ function uploadDLC(dlcbuf, filename, progresscb) {
                 setNordicNotifications(false);
                 reject('File Transfer error');
             } else if (fileMode == file_transfer_lookup.FileReceivedOk) {
+                log(`packetsSent: ${packetsSent} packetsAckd: ${packetsAckd}`);
                 isTransferring = false;
                 removeGPListenCallback(hnd);
                 setNordicNotifications(false);
@@ -279,7 +283,11 @@ function uploadDLC(dlcbuf, filename, progresscb) {
         let nordicCallback = (buf) => {
             let code = buf.getUint8(0);
             if (code == 0x09) {
-                rxPackets = buf.getUint8(1);
+                let newRxPackets = buf.getUint8(1);
+                if (newRxPackets <= rxPackets)
+                    packetsAckd += rxPackets;
+                rxPackets = newRxPackets;
+                
                 //log(`NordicListen GotPacketAck ${rxPackets}`);
                 //transferNextChunk();
             } else if (code == 0x0a) {
@@ -366,7 +374,7 @@ async function doConnect() {
         var uuid = characteristic.uuid;
         var name = uuid_lookup[uuid];
         var props = '';
-        for (k in characteristic.properties) {
+        for (let k in characteristic.properties) {
             if (characteristic.properties[k]) props += k + ' ';
         }
         log('> Got Characteristic: ' + uuid + ' - ' + name + ' (' + props + ')');
@@ -391,4 +399,4 @@ async function doConnect() {
         setAntennaColor(0,0,255);
         await sleep(0.2);
     }
-  }
+}
