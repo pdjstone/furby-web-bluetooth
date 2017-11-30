@@ -37,6 +37,7 @@ var isTransferring = false;
 var furby_chars = {};
 var gp_listen_callbacks = [];
 var nordicListener = null;
+var keepAliveTimer = null;
 
 function log() {
     let bits = []
@@ -51,14 +52,14 @@ function log() {
 
 function sendGPCmd(data, prefix) {
     return new Promise((resolve, reject) => {
-        let s = ['Sending data to GeneralPlusWrite', data];
-        if (prefix)
-            s.concat([' expecting prefix of ', prefix]);
-        log.apply(s);
-        let hnd = addGPListenCallback(buf => {
+        //let s = ['Sending data to GeneralPlusWrite', buf2hex(data)];
+        //if (prefix)
+        //    s.concat([' expecting prefix of ', prefix]);
+        //log.apply(null, s);
+        let hnd = addGPListenCallback(prefix, buf => {
             removeGPListenCallback(hnd);
             resolve(buf);
-        }, prefix);
+        });
         furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(data)).catch(error => {
             removeGPListenCallback(hnd);
             reject(error);
@@ -66,7 +67,7 @@ function sendGPCmd(data, prefix) {
     });
 }
 
-function addGPListenCallback(fn, prefix) {
+function addGPListenCallback(prefix, fn) {
     let handle = gp_listen_callbacks.length;
     gp_listen_callbacks[handle] = [fn, prefix];
     return handle;
@@ -131,9 +132,11 @@ async function getAllDLCInfo() {
     let allSlotsInfo = await getDLCInfo();
     console.log(allSlotsInfo);
     var slots = [];
-    for (let i=0; i<16; i++) {
+    for (let i=0; i<14; i++) {
         slots[i] = await getDLCSlotInfo(i);
     }
+    for (let i=0; i<slots.length; i++)
+        log(`slot ${i}: ` + buf2hex(slots[i])); 
 }
 
 function getDLCSlotInfo(slot) {
@@ -168,11 +171,12 @@ async function fetchAndUploadDLC(dlcurl) {
     try {
         progress.style.display = 'block';
         let c = 0;
-        await uploadDLC(buf, 'DLC1234.DLC', (current, total) => {
-            if (c++ % 100 == 0) {
+        await uploadDLC(buf, 'TU001237.DLC', (current, total) => {
+            if (c % 100 == 0) 
                 progress.value = current;
+            if (c % 500 == 0)
                 log(`transfer: ${current}/${total}`);
-            }
+            c++;
         });
     } catch (e) {
         log('Download failed');
@@ -184,6 +188,7 @@ async function fetchAndUploadDLC(dlcurl) {
 
 function startKeepAlive() {
     return setInterval(async () => {
+        if (isTransferring) return;
         let buf = await sendGPCmd([0x20, 0x06], [0x22]);
         //log('Got ImHereSignal', buf);
     }, 3000);
@@ -192,7 +197,7 @@ function startKeepAlive() {
 function setNordicNotifications(enable, cb) {
     let data = [9, (enable ? 1 : 0), 0];
     nordicListener = enable ? cb : null;
-    return furby_chars.NordicWrite.writeValue(new UInt8Array(data));
+    return furby_chars.NordicWrite.writeValue(new Uint8Array(data));
 }
 
 function handleNordicNotification(event) {
@@ -204,6 +209,8 @@ function handleNordicNotification(event) {
 function uploadDLC(dlcbuf, filename, progresscb) {
     if (isTransferring) return Promise.reject('Transfer already in progress');
     let size = dlcbuf.byteLength;
+    if (filename.length != 12)
+        return Promise.reject('Filename should be 12 chars long');
     let initcmd = [0x50, 0x00,
         size >> 16 & 0xff, size >> 8 & 0xff, size & 0xff, 
         2];
@@ -212,22 +219,30 @@ function uploadDLC(dlcbuf, filename, progresscb) {
     initcmd = initcmd.concat([0,0]);
     isTransferring = false;
     let sendPos = 0;
-    let chunkSize = 20;
-    
+    let rxPackets = 0;
+    let CHUNK_SIZE = 20;
+    let MAX_BUFFERED_PACKETS = 10;
+
     return new Promise((resolve, reject) => {
         let transferNextChunk = () => {
             if (!isTransferring)
                 return;
-            let chunk = dlcbuf.slice(sendPos, sendPos + chunkSize);
+            if (rxPackets > MAX_BUFFERED_PACKETS) {
+                log(`rxPackets=${rxPackets}, pausing...`);
+                setTimeout(transferNextChunk, 100);
+                return;
+            }
+            let chunk = dlcbuf.slice(sendPos, sendPos + CHUNK_SIZE);
             if (chunk.byteLength > 0) {
                 furby_chars.FileWrite.writeValue(chunk).then(() => {
                     sendPos += chunk.byteLength;
                     if (progresscb)
                         progresscb(sendPos, size);
-                    //setTimeout(transferNextChunk, 16);
+                    setTimeout(transferNextChunk, 1);
                 }).catch(error => {
                     //isTransferring = false;
                     //removeGPListenCallback(hnd)
+                    log('FileWrite.writeValue failed, will retry');
                     console.log(error);
                     setTimeout(transferNextChunk, 16);
                     //reject(error);
@@ -237,7 +252,7 @@ function uploadDLC(dlcbuf, filename, progresscb) {
             }
         }
 
-        let hnd = addGPListenCallback((buf) => {
+        let hnd = addGPListenCallback([0x24], buf => {
             let fileMode = buf.getUint8(1);
             log('Got FileWrite callback: ' + file_transfer_modes[fileMode]);
             if (fileMode == file_transfer_lookup.FileTransferTimeout ||
@@ -255,13 +270,14 @@ function uploadDLC(dlcbuf, filename, progresscb) {
                 isTransferring = true;
                 transferNextChunk();
             }
-        }, [0x24]);
+        });
 
         let nordicCallback = (buf) => {
             let code = buf.getUint8(0);
             if (code == 0x09) {
-                log('NordicListen GotPacketAck', buf);
-                transferNextChunk();
+                rxPackets = buf.getUint8(1);
+                //log(`NordicListen GotPacketAck ${rxPackets}`);
+                //transferNextChunk();
             } else if (code == 0x0a) {
                 log('NordicListen GotPacketOverload', buf);
             } else {
@@ -298,11 +314,7 @@ function buf2hex(dv) {
 }
 
 function doConnectDisconnect() {
-    if (isConnected) {
-      doDisconnect();
-    } else {
-      doConnect();
-    }
+    isConnected ? doDisconnect() : doConnect();
 }
 
 async function doDisconnect() {
@@ -364,11 +376,11 @@ async function doConnect() {
     await triggerAction(39,4,2,0); // 'get ready'
 
     for (let i=0; i < 2; i++) {
-        await setAntennaColor(255, 0, 0);
-        sleep(0.1);
-        await setAntennaColor(0,255,0);
-        sleep(0.1);
-        await setAntennaColor(0,0,255);
-        sleep(0.1);
+        setAntennaColor(255,0,0);
+        await sleep(0.1);
+        setAntennaColor(0,255,0);
+        await sleep(0.1);
+        setAntennaColor(0,0,255);
+        await sleep(0.1);
     }
   }

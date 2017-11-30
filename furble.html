@@ -40,7 +40,7 @@
 </div>
 
 <div class='row'>
-    <input id='dlcname' value='dlc/tu012700.dlc'><button onclick="fetchAndUploadDLC(document.getElementById('dlcname').value)">Upload</button>
+    <input id='dlcname' value='dlc/tu003410_ctxlogo.dlc'><button onclick="fetchAndUploadDLC(document.getElementById('dlcname').value)">Upload</button>
 </div>
 <progress id='dlcprogress'/>
 <div id="out" style="white-space:pre">Console Log
@@ -49,4 +49,5 @@
     var s = document.createElement('script');
     s.src='furble.js?' + Math.random();
     document.body.appendChild(s);
+    s.onload = () => log('ready!');
 </script>
