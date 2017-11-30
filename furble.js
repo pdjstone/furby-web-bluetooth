@@ -36,9 +36,7 @@ var isConnected = false;
 var isTransferring = false;
 var furby_chars = {};
 var gp_listen_callbacks = [];
-var lastResponse;
 var nordicListener = null;
-
 
 function log() {
     let bits = []
@@ -55,15 +53,13 @@ function sendGPCmd(data, prefix) {
     return new Promise((resolve, reject) => {
         let s = ['Sending data to GeneralPlusWrite', data];
         if (prefix)
-            s.push([' expecting prefix of ', prefix]);
+            s.concat([' expecting prefix of ', prefix]);
         log.apply(s);
         let hnd = addGPListenCallback(buf => {
             removeGPListenCallback(hnd);
             resolve(buf);
         }, prefix);
-        furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(data)).then(() => {
-        
-        }).catch(error => {
+        furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(data)).catch(error => {
             removeGPListenCallback(hnd);
             reject(error);
         });
@@ -71,13 +67,36 @@ function sendGPCmd(data, prefix) {
 }
 
 function addGPListenCallback(fn, prefix) {
-    var handle = gp_listen_callbacks.length;
+    let handle = gp_listen_callbacks.length;
     gp_listen_callbacks[handle] = [fn, prefix];
     return handle;
 }
 
 function removeGPListenCallback(handle) {
     delete gp_listen_callbacks[handle];
+}
+
+function handleGeneralPlusResponse(event) {
+    let buf = event.target.value;
+    if (buf.getUint8(0) != 0x22) // don't spam log with ImHereSignal keepalive responses
+        log('Got GeneralPlus response', buf);
+    
+    for (let handle in gp_listen_callbacks) {
+        let [cb, prefix] = gp_listen_callbacks[handle];
+        if (prefixMatches(prefix, buf))
+            cb(buf);
+    }
+}
+
+function prefixMatches(prefix, buf) {
+    if (typeof(prefix) == 'undefined')
+        return true;
+
+    for (let i=0; i < prefix.length; i++) {
+        if (buf.getUint8(i) != prefix[i])
+            return false;
+    }
+    return true;
 }
 
 function triggerAction(input, index, subindex, specific) {
@@ -110,7 +129,7 @@ async function getDLCInfo() {
 
 async function getAllDLCInfo() {
     let allSlotsInfo = await getDLCInfo();
-    console.log(allSlotsInfo)
+    console.log(allSlotsInfo);
     var slots = [];
     for (let i=0; i<16; i++) {
         slots[i] = await getDLCSlotInfo(i);
@@ -131,7 +150,8 @@ async function getFirmwareVersion() {
     return buf;
 }
 
-async function setAntennaColor(r,g,b) {
+async function setAntennaColor(r, g, b) {
+    log(`Setting antenna color to (${r}, ${g}, ${b})`);
     let buf = await sendGPCmd([0x14, r, g, b]);
 }
 
@@ -160,7 +180,6 @@ async function fetchAndUploadDLC(dlcurl) {
     } finally {
         progress.style.display = 'none';
     }
-
 }
 
 function startKeepAlive() {
@@ -170,10 +189,22 @@ function startKeepAlive() {
     }, 3000);
 }
 
+function setNordicNotifications(enable, cb) {
+    let data = [9, (enable ? 1 : 0), 0];
+    nordicListener = enable ? cb : null;
+    return furby_chars.NordicWrite.writeValue(new UInt8Array(data));
+}
+
+function handleNordicNotification(event) {
+    //log('Nordic listen', buf);
+    if (nordicListener) 
+        nordicListener(event.target.value);
+}
+
 function uploadDLC(dlcbuf, filename, progresscb) {
-    if (window.isTransferring) return Promise.reject('Transfer already in progress');
+    if (isTransferring) return Promise.reject('Transfer already in progress');
     let size = dlcbuf.byteLength;
-    let initcmd = [0x50, 0x00, 
+    let initcmd = [0x50, 0x00,
         size >> 16 & 0xff, size >> 8 & 0xff, size & 0xff, 
         2];
     let encoder = new TextEncoder('utf-8');
@@ -184,23 +215,23 @@ function uploadDLC(dlcbuf, filename, progresscb) {
     let chunkSize = 20;
     
     return new Promise((resolve, reject) => {
-
         let transferNextChunk = () => {
             if (!isTransferring)
                 return;
             let chunk = dlcbuf.slice(sendPos, sendPos + chunkSize);
-            sendPos += chunk.byteLength;
             if (chunk.byteLength > 0) {
                 furby_chars.FileWrite.writeValue(chunk).then(() => {
-                    progresscb(sendPos, size);
-                    setTimeout(transferNextChunk, 20);
+                    sendPos += chunk.byteLength;
+                    if (progresscb)
+                        progresscb(sendPos, size);
+                    //setTimeout(transferNextChunk, 16);
                 }).catch(error => {
-                    isTransferring = false;
-                    removeGPListenCallback(hnd)
+                    //isTransferring = false;
+                    //removeGPListenCallback(hnd)
                     console.log(error);
-                    reject(error);
-                });
-                
+                    setTimeout(transferNextChunk, 16);
+                    //reject(error);
+                });  
             } else {
                 isTransferring = false;
             }
@@ -213,31 +244,36 @@ function uploadDLC(dlcbuf, filename, progresscb) {
                 fileMode == file_transfer_lookup.FileReceivedErr) {
                 isTransferring = false;
                 removeGPListenCallback(hnd);
+                setNordicNotifications(false);
                 reject('File Transfer error');
             } else if (fileMode == file_transfer_lookup.FileReceivedOk) {
                 isTransferring = false;
                 removeGPListenCallback(hnd);
+                setNordicNotifications(false);
                 resolve();
             } else if (fileMode == file_transfer_lookup.ReadyToReceive) {
                 isTransferring = true;
                 transferNextChunk();
             }
         }, [0x24]);
-        log('Sending init DLC: ', initcmd);
-        furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(initcmd)).catch(error => reject(error));
+
+        let nordicCallback = (buf) => {
+            let code = buf.getUint8(0);
+            if (code == 0x09) {
+                log('NordicListen GotPacketAck', buf);
+                transferNextChunk();
+            } else if (code == 0x0a) {
+                log('NordicListen GotPacketOverload', buf);
+            } else {
+                log('NordicListen uknown', buf);
+            }
+        };
+
+        setNordicNotifications(true, nordicCallback).then(() => {
+            log('Sending init DLC: ', buf2hex(initcmd), 'file length 0x' + size.toString(16));
+            furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(initcmd)).catch(error => reject(error));
+        }).catch(error => reject(error));
     });
-}
-
-
-function prefixMatches(prefix, buf) {
-    if (typeof(prefix) == 'undefined')
-        return true;
-
-    for (let i=0; i < prefix.length; i++) {
-        if (buf.getUint8(i) != prefix[i])
-            return false;
-    }
-    return true;
 }
 
 function onDisconnected() {
@@ -247,34 +283,6 @@ function onDisconnected() {
     document.getElementById('connbtn').textContent = 'Connect';
 }
 
-function handleGeneralPlusResponse(event) {
-    let buf = event.target.value;
-    if (buf.getUint8(0) != 0x22) // ImHereSignal Keepalive
-        log('Got GeneralPlus response', buf);
-    lastResponse = buf;
-    
-    for (let handle in gp_listen_callbacks) {
-        [cb, prefix] = gp_listen_callbacks[handle];
-        if (prefixMatches(prefix, buf))
-            cb(buf);
-    }
-}
-
-function handleNordicNotification(event) {
-    let buf = event.target.value;
-    log('Nordic listen', buf);
-    if (nordicListener) {
-        nordicListener(buf);
-    }
-}
-
-function setNordicListener(fn) {
-    window.nordicListener = fn;
-}
-
-function removeNordicListener(fn) {
-    window.nordicListener = null;
-}
 function buf2hex(dv) {
     var s = '';
     if (DataView.prototype.isPrototypeOf(dv)) {
@@ -286,7 +294,6 @@ function buf2hex(dv) {
             s += ('0' + dv[i].toString(16)).substr(-2);
         }    
     }
-
     return s;
 }
 
@@ -305,46 +312,63 @@ async function doDisconnect() {
     } catch (e) {
       log('Argh! ' + e);
     }
-  }
+}
+
+function sleep(t) {
+    return new Promise((resolve, reject) => {
+        setTimeout(resolve, t);
+    });
+}
 
 async function doConnect() {
-      log('Requesting Bluetooth Devices with Furby name...');
-  
-      device = await navigator.bluetooth.requestDevice({
-          filters: [{ name: 'Furby'}], 
-          optionalServices: ['generic_access', 'device_information', fluff_service]});
-  
-      device.addEventListener('gattserverdisconnected', onDisconnected);
-  
-      log('Connecting to GATT Server...');
-      const server = await device.gatt.connect();
-  
-      isConnected = true;
-      document.getElementById('connbtn').textContent = 'Disconnect';
-  
-      log('Getting Furby Service...');
-      const service = await server.getPrimaryService(fluff_service);
-  
-      log('Getting Furby Characteristics...');
-      const characteristics = await service.getCharacteristics();
-  
-      // put handles to characteristics into chars object
-      for (const characteristic of characteristics) {
+    log('Requesting Bluetooth Devices with Furby name...');
+
+    device = await navigator.bluetooth.requestDevice({
+        filters: [{ name: 'Furby'}], 
+        optionalServices: ['generic_access', 'device_information', fluff_service]});
+
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+
+    log('Connecting to GATT Server...');
+    const server = await device.gatt.connect();
+
+    isConnected = true;
+    document.getElementById('connbtn').textContent = 'Disconnect';
+
+    log('Getting Furby Service...');
+    const service = await server.getPrimaryService(fluff_service);
+
+    log('Getting Furby Characteristics...');
+    const characteristics = await service.getCharacteristics();
+
+    // put handles to characteristics into chars object
+    for (const characteristic of characteristics) {
         var uuid = characteristic.uuid;
         var name = uuid_lookup[uuid];
         var props = '';
         for (k in characteristic.properties) {
-          if (characteristic.properties[k]) props += k + ' ';
+            if (characteristic.properties[k]) props += k + ' ';
         }
         log('> Got Characteristic: ' + uuid + ' - ' + name + ' (' + props + ')');
         furby_chars[name] = characteristic;
-      }
-  
-      // enable notifications
-      furby_chars.GeneralPlusListen.addEventListener('characteristicvaluechanged', handleGeneralPlusResponse);
-      await furby_chars.GeneralPlusListen.startNotifications();
-  
-      keepAliveTimer = startKeepAlive();
-      furby_chars.NordicListen.addEventListener('characteristicvaluechanged', handleNordicNotification);
-      await furby_chars.NordicListen.startNotifications();
+    }
+
+    // enable notifications
+    furby_chars.GeneralPlusListen.addEventListener('characteristicvaluechanged', handleGeneralPlusResponse);
+    await furby_chars.GeneralPlusListen.startNotifications();
+
+    keepAliveTimer = startKeepAlive();
+    furby_chars.NordicListen.addEventListener('characteristicvaluechanged', handleNordicNotification);
+    await furby_chars.NordicListen.startNotifications();
+
+    await triggerAction(39,4,2,0); // 'get ready'
+
+    for (let i=0; i < 2; i++) {
+        await setAntennaColor(255, 0, 0);
+        sleep(0.1);
+        await setAntennaColor(0,255,0);
+        sleep(0.1);
+        await setAntennaColor(0,0,255);
+        sleep(0.1);
+    }
   }
