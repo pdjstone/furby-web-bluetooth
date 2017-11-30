@@ -148,7 +148,7 @@ function getDLCSlotInfo(slot) {
 }
 
 function deleteDLC(slot) {
-    return sendGPCmd([0x74], [0x74]);
+    return sendGPCmd([0x74, slot], [0x74]);
 }
 
 async function getFirmwareVersion() {
@@ -164,30 +164,6 @@ async function setAntennaColor(r, g, b) {
 
 function cycleDebug() {
     sendGPCmd([0xdb]);
-}
-
-async function fetchAndUploadDLC(dlcurl) {
-    let response = await fetch(dlcurl);
-    console.log('Fetched DLC from server');
-    let buf = await response.arrayBuffer();
-    var progress = document.getElementById('dlcprogress');
-    progress.max = buf.byteLength;
-    try {
-        progress.style.display = 'block';
-        let c = 0;
-        await uploadDLC(buf, 'TU001237.DLC', (current, total) => {
-            if (c % 100 == 0) 
-                progress.value = current;
-            if (c % 500 == 0)
-                console.log(`transfer: ${current}/${total}`);
-            c++;
-        });
-    } catch (e) {
-        log('Download failed');
-        console.log(e);
-    } finally {
-        progress.style.display = 'none';
-    }
 }
 
 function startKeepAlive() {
@@ -210,11 +186,39 @@ function handleNordicNotification(event) {
         nordicListener(event.target.value);
 }
 
+async function fetchAndUploadDLC(dlcurl) {
+    let response = await fetch(dlcurl);
+    console.log('Fetched DLC from server');
+    let buf = await response.arrayBuffer();
+    var progress = document.getElementById('dlcprogress');
+    progress.max = buf.byteLength;
+    try {
+        progress.style.display = 'block';
+        let c = 0;
+        await sendGPCmd([0xcd, 0]); // eyes off, save battery
+        await setAntennaColor(0,0,0);
+        await uploadDLC(buf, 'TU001239.DLC', (current, total) => {
+            if (c % 100 == 0) 
+                progress.value = current;
+            if (c % 500 == 0)
+                console.log(`transfer: ${current}/${total}`);
+            c++;
+        });
+    } catch (e) {
+        log('Download failed');
+        console.log(e);
+    } finally {
+        await sendGPCmd([0xcd, 1]); // eyes on
+        await setAntennaColor(0,255,0);
+        progress.style.display = 'none';
+    }
+}
+
 function uploadDLC(dlcbuf, filename, progresscb) {
     if (isTransferring) return Promise.reject('Transfer already in progress');
     let size = dlcbuf.byteLength;
     if (filename.length != 12)
-        return Promise.reject('Filename should be 12 chars long');
+        return Promise.reject('Filename must be 12 chars long');
     let initcmd = [0x50, 0x00,
         size >> 16 & 0xff, size >> 8 & 0xff, size & 0xff, 
         2];
@@ -223,8 +227,6 @@ function uploadDLC(dlcbuf, filename, progresscb) {
     initcmd = initcmd.concat([0,0]);
     isTransferring = false;
     let sendPos = 0;
-    let packetsSent = 0;
-    let packetsAckd = 0;
     let rxPackets = 0;
     let CHUNK_SIZE = 20;
     let MAX_BUFFERED_PACKETS = 10;
@@ -242,10 +244,12 @@ function uploadDLC(dlcbuf, filename, progresscb) {
             if (chunk.byteLength > 0) {
                 furby_chars.FileWrite.writeValue(chunk).then(() => {
                     sendPos += chunk.byteLength;
-                    packetsSent++;
                     if (progresscb)
                         progresscb(sendPos, size);
-                    setTimeout(transferNextChunk, 1);
+                    if (sendPos < size)
+                        setTimeout(transferNextChunk, 1);
+                    else 
+                        log('Sent final packet');
                 }).catch(error => {
                     //isTransferring = false;
                     //removeGPListenCallback(hnd)
@@ -255,6 +259,7 @@ function uploadDLC(dlcbuf, filename, progresscb) {
                     //reject(error);
                 });  
             } else {
+                log('tried to send empty packet??');
                 isTransferring = false;
             }
         }
@@ -269,7 +274,7 @@ function uploadDLC(dlcbuf, filename, progresscb) {
                 setNordicNotifications(false);
                 reject('File Transfer error');
             } else if (fileMode == file_transfer_lookup.FileReceivedOk) {
-                log(`packetsSent: ${packetsSent} packetsAckd: ${packetsAckd}`);
+                log(`sendPos: ${sendPos} / ${size}`);
                 isTransferring = false;
                 removeGPListenCallback(hnd);
                 setNordicNotifications(false);
@@ -283,11 +288,7 @@ function uploadDLC(dlcbuf, filename, progresscb) {
         let nordicCallback = (buf) => {
             let code = buf.getUint8(0);
             if (code == 0x09) {
-                let newRxPackets = buf.getUint8(1);
-                if (newRxPackets <= rxPackets)
-                    packetsAckd += rxPackets;
-                rxPackets = newRxPackets;
-                
+                rxPackets = buf.getUint8(1);
                 //log(`NordicListen GotPacketAck ${rxPackets}`);
                 //transferNextChunk();
             } else if (code == 0x0a) {
