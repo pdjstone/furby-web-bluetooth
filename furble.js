@@ -49,7 +49,9 @@ function log() {
     }
     var s = bits.join(' ')
     console.log(s);
-    document.getElementById('out').textContent += s + "\n";
+    let o = document.getElementById('out');
+    o.textContent += s + "\n";
+    o.scrollTop = o.scrollHeight;
 }
 
 function sendGPCmd(data, prefix) {
@@ -381,12 +383,12 @@ async function doConnect() {
 
     await triggerAction(39,4,2,0); // 'get ready'
 
-    for (let i=0; i < 2; i++) {
+    for (let i=0; i < 3; i++) {
         setAntennaColor(255,0,0);
-        await sleep(0.1);
+        await sleep(0.2);
         setAntennaColor(0,255,0);
-        await sleep(0.1);
+        await sleep(0.2);
         setAntennaColor(0,0,255);
-        await sleep(0.1);
+        await sleep(0.2);
     }
   }
