@@ -129,7 +129,9 @@ function deactivateDLC(slot) {
 }
 
 async function getDLCInfo() {
-    return await sendGPCmd([0x72], [0x72]);
+    let buf = await sendGPCmd([0x72], [0x72]);
+    log('dlc info: ', buf);
+    return buf;
 }
 
 async function getAllDLCInfo() {
@@ -149,6 +151,13 @@ function getDLCSlotInfo(slot) {
 
 function deleteDLC(slot) {
     return sendGPCmd([0x74, slot], [0x74]);
+}
+
+async function deleteAllDLCSlots() {
+    for (let i=0; i<14; i++) {
+        await deactivateDLC(i);
+        await deleteDLC(i);
+    }
 }
 
 async function getFirmwareVersion() {
@@ -188,13 +197,15 @@ function handleNordicNotification(event) {
 
 async function fetchAndUploadDLC(dlcurl) {
     let response = await fetch(dlcurl);
-    console.log('Fetched DLC from server');
+    log('Fetched DLC from server');
     let buf = await response.arrayBuffer();
     var progress = document.getElementById('dlcprogress');
     progress.max = buf.byteLength;
     try {
         progress.style.display = 'block';
         let c = 0;
+        log('Clearing all DLC slots...');
+        await deleteAllDLCSlots();
         await sendGPCmd([0xcd, 0]); // eyes off, save battery
         await setAntennaColor(0,0,0);
         await uploadDLC(buf, 'TU001239.DLC', (current, total) => {
@@ -210,6 +221,7 @@ async function fetchAndUploadDLC(dlcurl) {
     } finally {
         await sendGPCmd([0xcd, 1]); // eyes on
         await setAntennaColor(0,255,0);
+        let buf = getDLCInfo();
         progress.style.display = 'none';
     }
 }
