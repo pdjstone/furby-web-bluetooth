@@ -105,14 +105,16 @@ function prefixMatches(prefix, buf) {
 }
 
 function triggerAction(input, index, subindex, specific) {
-    if (!index)
+    if (arguments.length == 1)
         data = [0x10, 0, input];
-    else if (!subindex)
+    else if (arguments.length == 2)
         data = [0x11, 0, input, index];
-    else if (!specific)
+    else if (arguments.length == 3)
         data = [0x12, 0, input, index, subindex];
-    else 
+    else if (arguments.length == 4)
         data = [0x13, 0, input, index, subindex, specific];
+    else 
+        throw 'Must specify at least an input';
     return sendGPCmd(data);
 }
 
@@ -120,16 +122,31 @@ function loadDLC(slot) {
     return sendGPCmd([0x60, slot], [0xdc]);
 }
 
-function activateDLC(slot) {
-    return sendGPCmd([0x61, slot], [0xdc]);
+function activateDLC() {
+    return sendGPCmd([0x61], [0xdc]);
 }
 
 function deactivateDLC(slot) {
     return sendGPCmd([0x62, slot], [0xdc]);
 }
 
+async function loadAndActivateDLC(slot) {
+    await loadDLC(slot);
+    await activateDLC();
+}
+
 async function getDLCInfo() {
+    
     let buf = await sendGPCmd([0x72], [0x72]);
+
+    // 720000200000002000 slot 13 loaded+active (3)
+    // 720000200000000000 slot 13 not active (2)
+    // 7200003c0000000000 slots 10,11,12,13 state 2
+    // 7200003e0000000000 slots 9,10,11,12,13 state 2
+    // 7200003f0000000000 slots 8+ state 2
+    // 7200003f8000000000 slots 7+ state 2
+    // 7200003fc000000000 slots 6+ state 2
+    // 7200003ff800000000 slots 3+ state 2
     log('dlc info: ', buf);
     return buf;
 }
@@ -203,12 +220,14 @@ async function fetchAndUploadDLC(dlcurl) {
     progress.max = buf.byteLength;
     try {
         progress.style.display = 'block';
+        progress.removeAttribute('value');
         let c = 0;
         log('Clearing all DLC slots...');
-        await deleteAllDLCSlots();
+        //await deleteAllDLCSlots();
         await sendGPCmd([0xcd, 0]); // eyes off, save battery
         await setAntennaColor(0,0,0);
-        await uploadDLC(buf, 'TU001239.DLC', (current, total) => {
+        let name = 'TU' + Math.floor(Math.random()*10000).toString().padStart(6,'0') + '.DLC';
+        await uploadDLC(buf, name, (current, total) => {
             if (c % 100 == 0) 
                 progress.value = current;
             if (c % 500 == 0)
@@ -286,6 +305,8 @@ function uploadDLC(dlcbuf, filename, progresscb) {
                 setNordicNotifications(false);
                 reject('File Transfer error');
             } else if (fileMode == file_transfer_lookup.FileReceivedOk) {
+                // TODO: sometimes we get a FileReceivedErr after getting FileReceivedOk
+                // so we should add a delay before resolving to allow for failure
                 log(`sendPos: ${sendPos} / ${size}`);
                 isTransferring = false;
                 removeGPListenCallback(hnd);
