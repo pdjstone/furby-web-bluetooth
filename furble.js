@@ -20,6 +20,11 @@ var file_transfer_modes = {
     6: 'FileReceivedErr'
 }
 
+const SLOT_EMPTY = 0;
+const SLOT_UPLOADING = 1;
+const SLOT_FILLED = 2;
+const SLOT_ACTIVE = 3;
+
 function flipDict(d) {
     let flipped = {};
     for (let k in d) {
@@ -139,16 +144,27 @@ async function getDLCInfo() {
     
     let buf = await sendGPCmd([0x72], [0x72]);
 
-    // 720000200000002000 slot 13 loaded+active (3)
+    // 72 00 00 20 00 00 00 20 00 slot 13 loaded+active (3)
     // 720000200000000000 slot 13 not active (2)
     // 7200003c0000000000 slots 10,11,12,13 state 2
     // 7200003e0000000000 slots 9,10,11,12,13 state 2
     // 7200003f0000000000 slots 8+ state 2
     // 7200003f8000000000 slots 7+ state 2
     // 7200003fc000000000 slots 6+ state 2
-    // 7200003ff800000000 slots 3+ state 2
+    // 72 00 00 3f f8 00000000 slots 3+ state 2
     log('dlc info: ', buf);
-    return buf;
+    let filledSlots = (buf.getUint8(3) << 8) |  buf.getUint8(4);
+    let activeSlots = (buf.getUint8(7) << 8) |  buf.getUint8(8);
+    let slots = [];
+    log('filled slots:', filledSlots.toString(16));
+    for (let i=0; i < 14; i++) {
+        slots[i] = 0;
+        if (filledSlots & (1 << i))
+            slots[i] = SLOT_FILLED;
+        if (activeSlots & (1 << i))
+            slots[i] = SLOT_ACTIVE;
+    }
+    return slots;
 }
 
 async function getAllDLCInfo() {
@@ -162,8 +178,9 @@ async function getAllDLCInfo() {
         log(`slot ${i}: ` + buf2hex(slots[i])); 
 }
 
-function getDLCSlotInfo(slot) {
-    return sendGPCmd([0x73], [0x73]);
+async function getDLCSlotInfo(slot) {
+    let buf = await sendGPCmd([0x73, slot], [0x73]);
+    // 73 0d 5455303032393439 04c95a 2754ea15 - 73, slot number, filename (minus extension), length, checksum??
 }
 
 function deleteDLC(slot) {
@@ -222,16 +239,16 @@ async function fetchAndUploadDLC(dlcurl) {
         progress.style.display = 'block';
         progress.removeAttribute('value');
         let c = 0;
-        log('Clearing all DLC slots...');
+        //log('Clearing all DLC slots...');
         //await deleteAllDLCSlots();
         await sendGPCmd([0xcd, 0]); // eyes off, save battery
         await setAntennaColor(0,0,0);
         let name = 'TU' + Math.floor(Math.random()*10000).toString().padStart(6,'0') + '.DLC';
-        await uploadDLC(buf, name, (current, total) => {
+        await uploadDLC(buf, name, (current, total, maxRx) => {
             if (c % 100 == 0) 
                 progress.value = current;
             if (c % 500 == 0)
-                console.log(`transfer: ${current}/${total}`);
+                console.log(`transfer: ${current}/${total} maxRx:${maxRx}`);
             c++;
         });
     } catch (e) {
@@ -240,7 +257,19 @@ async function fetchAndUploadDLC(dlcurl) {
     } finally {
         await sendGPCmd([0xcd, 1]); // eyes on
         await setAntennaColor(0,255,0);
-        let buf = getDLCInfo();
+        /*let slots = await getDLCInfo();
+        let filledSlot = slots.indexOf(SLOT_FILLED);
+        let activeSlot = slots.indexOf(SLOT_ACTIVE);
+        if (filledSlot == -1)
+            throw new Error('Upload failed - no slots filled');
+        
+        if (activeSlot != -1) 
+            await deactivateDLC(activeSlot)
+        
+        await loadAndActivateDLC(filledSlot);
+        slots = await getDLCInfo();
+        if (slots.indexOf(SLOT_ACTIVE) != filledSlot)
+            throw new Error('Failed to activate');*/
         progress.style.display = 'none';
     }
 }
@@ -261,6 +290,7 @@ function uploadDLC(dlcbuf, filename, progresscb) {
     let rxPackets = 0;
     let CHUNK_SIZE = 20;
     let MAX_BUFFERED_PACKETS = 10;
+    let maxRx = 0;
 
     return new Promise((resolve, reject) => {
         let transferNextChunk = () => {
@@ -276,9 +306,9 @@ function uploadDLC(dlcbuf, filename, progresscb) {
                 furby_chars.FileWrite.writeValue(chunk).then(() => {
                     sendPos += chunk.byteLength;
                     if (progresscb)
-                        progresscb(sendPos, size);
+                        progresscb(sendPos, size, maxRx);
                     if (sendPos < size)
-                        setTimeout(transferNextChunk, 1);
+                        setTimeout(transferNextChunk, 16);
                     else 
                         log('Sent final packet');
                 }).catch(error => {
@@ -322,6 +352,7 @@ function uploadDLC(dlcbuf, filename, progresscb) {
             let code = buf.getUint8(0);
             if (code == 0x09) {
                 rxPackets = buf.getUint8(1);
+                if (rxPackets > maxRx) maxRx = rxPackets;
                 //log(`NordicListen GotPacketAck ${rxPackets}`);
                 //transferNextChunk();
             } else if (code == 0x0a) {
