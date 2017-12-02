@@ -43,6 +43,9 @@ var furby_chars = {};
 var gp_listen_callbacks = [];
 var nordicListener = null;
 var keepAliveTimer = null;
+var lastCommandSent = 0;
+var NO_RESPONSE = Symbol();
+
 
 function log() {
     let bits = []
@@ -59,26 +62,33 @@ function log() {
     o.scrollTop = o.scrollHeight;
 }
 
-function sendGPCmd(data, prefix) {
+function sendGPCmd(data, response_prefix) {
     return new Promise((resolve, reject) => {
-        //let s = ['Sending data to GeneralPlusWrite', buf2hex(data)];
-        //if (prefix)
-        //    s.concat([' expecting prefix of ', prefix]);
-        //log.apply(null, s);
-        let hnd = addGPListenCallback(prefix, buf => {
-            removeGPListenCallback(hnd);
-            resolve(buf);
-        });
-        furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(data)).catch(error => {
-            removeGPListenCallback(hnd);
-            reject(error);
-        });
+        log('Sending data to GeneralPlusWrite', buf2hex(data));
+        var hnd;
+        if (response_prefix != NO_RESPONSE) {
+            hnd = addGPListenCallback(response_prefix, buf => {
+                removeGPListenCallback(hnd);
+                resolve(buf);
+            });
+        }
+        furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(data))
+            .then(() => {
+                lastCommandSent = performance.now();
+                // if we're not expecting a response resolve once the data's been sent
+                if (response_prefix == NO_RESPONSE) 
+                    resolve();
+            }).catch(error => {
+                if (response_prefix != NO_RESPONSE)
+                    removeGPListenCallback(hnd);
+                reject(error);
+            });
     });
 }
 
-function addGPListenCallback(prefix, fn) {
+function addGPListenCallback(response_prefix, fn) {
     let handle = gp_listen_callbacks.length;
-    gp_listen_callbacks[handle] = [fn, prefix];
+    gp_listen_callbacks[handle] = [fn, response_prefix];
     return handle;
 }
 
@@ -120,9 +130,12 @@ function triggerAction(input, index, subindex, specific) {
         data = [0x13, 0, input, index, subindex, specific];
     else 
         throw 'Must specify at least an input';
-    return sendGPCmd(data);
+    return sendGPCmd(data, NO_RESPONSE);
 }
 
+function enableEyes(b) {
+    return sendGPCmd([0xcd, b ? 1 : 0], NO_RESPONSE);
+}
 function loadDLC(slot) {
     return sendGPCmd([0x60, slot], [0xdc]);
 }
@@ -141,17 +154,7 @@ async function loadAndActivateDLC(slot) {
 }
 
 async function getDLCInfo() {
-    
     let buf = await sendGPCmd([0x72], [0x72]);
-
-    // 72 00 00 20 00 00 00 20 00 slot 13 loaded+active (3)
-    // 720000200000000000 slot 13 not active (2)
-    // 7200003c0000000000 slots 10,11,12,13 state 2
-    // 7200003e0000000000 slots 9,10,11,12,13 state 2
-    // 7200003f0000000000 slots 8+ state 2
-    // 7200003f8000000000 slots 7+ state 2
-    // 7200003fc000000000 slots 6+ state 2
-    // 72 00 00 3f f8 00000000 slots 3+ state 2
     log('dlc info: ', buf);
     let filledSlots = (buf.getUint8(3) << 8) |  buf.getUint8(4);
     let activeSlots = (buf.getUint8(7) << 8) |  buf.getUint8(8);
@@ -196,25 +199,29 @@ async function deleteAllDLCSlots() {
 
 async function getFirmwareVersion() {
     let buf = await sendGPCmd([0xfe], [0xfe]);
-    log('Firmware version ', buf.getUint8(1));
-    return buf;
+    let version = buf.getUint8(1)
+    log('Firmware version ', version);
+    return version;
 }
 
-async function setAntennaColor(r, g, b) {
+function setAntennaColor(r, g, b) {
     log(`Setting antenna color to (${r}, ${g}, ${b})`);
-    let buf = await sendGPCmd([0x14, r, g, b]);
+    return sendGPCmd([0x14, r, g, b], NO_RESPONSE);
 }
 
 function cycleDebug() {
-    sendGPCmd([0xdb]);
+    return sendGPCmd([0xdb], NO_RESPONSE);
 }
 
 function startKeepAlive() {
-    return setInterval(async () => {
+    keepAliveTimer = setInterval(async () => {
         if (isTransferring) return;
-        let buf = await sendGPCmd([0x20, 0x06], [0x22]);
-        //log('Got ImHereSignal', buf);
-    }, 3000);
+        if (performance.now() - lastCommandSent > 3000) {
+            let buf = await sendGPCmd([0x20, 0x06], [0x22]);
+            //log('Got ImHereSignal', buf);
+        }
+       
+    }, 1000);
 }
 
 function setNordicNotifications(enable, cb) {
@@ -231,7 +238,9 @@ function handleNordicNotification(event) {
 
 async function fetchAndUploadDLC(dlcurl) {
     let response = await fetch(dlcurl);
-    log('Fetched DLC from server');
+    if (response.status != 200)
+        throw new Error('Failed to fetch DLC', dlcurl);
+    log('Fetched DLC from server:', dlcurl);
     let buf = await response.arrayBuffer();
     var progress = document.getElementById('dlcprogress');
     progress.max = buf.byteLength;
@@ -239,9 +248,9 @@ async function fetchAndUploadDLC(dlcurl) {
         progress.style.display = 'block';
         progress.removeAttribute('value');
         let c = 0;
-        //log('Clearing all DLC slots...');
-        //await deleteAllDLCSlots();
-        await sendGPCmd([0xcd, 0]); // eyes off, save battery
+        log('Clearing all DLC slots...');
+        await deleteAllDLCSlots();
+        await enableEyes(false); // eyes off, save battery
         await setAntennaColor(0,0,0);
         let name = 'TU' + Math.floor(Math.random()*10000).toString().padStart(6,'0') + '.DLC';
         await uploadDLC(buf, name, (current, total, maxRx) => {
@@ -251,13 +260,7 @@ async function fetchAndUploadDLC(dlcurl) {
                 console.log(`transfer: ${current}/${total} maxRx:${maxRx}`);
             c++;
         });
-    } catch (e) {
-        log('Download failed');
-        console.log(e);
-    } finally {
-        await sendGPCmd([0xcd, 1]); // eyes on
-        await setAntennaColor(0,255,0);
-        /*let slots = await getDLCInfo();
+        let slots = await getDLCInfo();
         let filledSlot = slots.indexOf(SLOT_FILLED);
         let activeSlot = slots.indexOf(SLOT_ACTIVE);
         if (filledSlot == -1)
@@ -269,8 +272,15 @@ async function fetchAndUploadDLC(dlcurl) {
         await loadAndActivateDLC(filledSlot);
         slots = await getDLCInfo();
         if (slots.indexOf(SLOT_ACTIVE) != filledSlot)
-            throw new Error('Failed to activate');*/
+            throw new Error('Failed to activate');
+    } catch (e) {
+        log('Upload failed');
+        console.log(e);
+        await setAntennaColor(255,0,0);
+    } finally {
         progress.style.display = 'none';
+        await enableEyes(true); // eyes on
+        await setAntennaColor(0,255,0);
     }
 }
 
@@ -304,11 +314,12 @@ function uploadDLC(dlcbuf, filename, progresscb) {
             let chunk = dlcbuf.slice(sendPos, sendPos + CHUNK_SIZE);
             if (chunk.byteLength > 0) {
                 furby_chars.FileWrite.writeValue(chunk).then(() => {
+                    lastCommandSent = performance.now();
                     sendPos += chunk.byteLength;
                     if (progresscb)
                         progresscb(sendPos, size, maxRx);
                     if (sendPos < size)
-                        setTimeout(transferNextChunk, 16);
+                        setTimeout(transferNextChunk, 1);
                     else 
                         log('Sent final packet');
                 }).catch(error => {
@@ -353,7 +364,7 @@ function uploadDLC(dlcbuf, filename, progresscb) {
             if (code == 0x09) {
                 rxPackets = buf.getUint8(1);
                 if (rxPackets > maxRx) maxRx = rxPackets;
-                //log(`NordicListen GotPacketAck ${rxPackets}`);
+                //console.log(`NordicListen GotPacketAck ${rxPackets}`);
                 //transferNextChunk();
             } else if (code == 0x0a) {
                 log('NordicListen GotPacketOverload', buf);
@@ -374,6 +385,7 @@ function onDisconnected() {
     clearInterval(keepAliveTimer);
     isConnected = false;
     document.getElementById('connbtn').textContent = 'Connect';
+    document.getElementById('state').textContent = 'Not Connected';
 }
 
 function buf2hex(dv) {
@@ -404,9 +416,7 @@ async function doDisconnect() {
 }
 
 function sleep(t) {
-    return new Promise((resolve, reject) => {
-        setTimeout(resolve, t);
-    });
+    return new Promise(resolve  => setTimeout(resolve, t));
 }
 
 async function doConnect() {
@@ -427,6 +437,7 @@ async function doConnect() {
 
     isConnected = true;
     document.getElementById('connbtn').textContent = 'Disconnect';
+    document.getElementById('state').textContent = 'Connected';
 
     log('Getting Furby Service...');
     const service = await server.getPrimaryService(fluff_service);
@@ -450,18 +461,19 @@ async function doConnect() {
     furby_chars.GeneralPlusListen.addEventListener('characteristicvaluechanged', handleGeneralPlusResponse);
     await furby_chars.GeneralPlusListen.startNotifications();
 
-    keepAliveTimer = startKeepAlive();
     furby_chars.NordicListen.addEventListener('characteristicvaluechanged', handleNordicNotification);
     await furby_chars.NordicListen.startNotifications();
 
-    await triggerAction(39,4,2,0); // 'get ready'
+    //await triggerAction(39,4,2,0); // 'get ready'
 
     for (let i=0; i < 3; i++) {
-        setAntennaColor(255,0,0);
-        await sleep(0.2);
-        setAntennaColor(0,255,0);
-        await sleep(0.2);
-        setAntennaColor(0,0,255);
-        await sleep(0.2);
+        await setAntennaColor(255,0,0);
+        await sleep(500);
+        await setAntennaColor(0,255,0);
+        await sleep(500);
+        await setAntennaColor(0,0,255);
+        await sleep(500);
     }
+
+    startKeepAlive();
 }
