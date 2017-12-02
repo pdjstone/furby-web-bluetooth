@@ -40,13 +40,18 @@
 </div>
 
 <div class='row'>
-    <input id='dlcname' value='dlc/tu003410_minified_chilli.dlc'><button onclick="fetchAndUploadDLC(document.getElementById('dlcname').value)">Upload</button>
+    <select id='dlcname'>
+        <option value='dlc/tu003410_minified_chilli.dlc'>Chilli Test</option>
+        <option value='dlc/tu012700.dlc'>TU012700</option>
+    </select>
+    <button onclick="fetchAndUploadDLC(dlcsel.options[dlcsel.selectedIndex].value)">Upload</button>
 </div>
 <progress id='dlcprogress'></progress>
 <div id="out" style="white-space:pre">Console Log
 
 </div>
 <script>
+    var dlcsel = document.getElementById('dlcname');
     var s = document.createElement('script');
     s.src='furble.js?' + Math.random();
     document.body.appendChild(s);
