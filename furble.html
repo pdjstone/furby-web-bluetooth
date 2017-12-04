@@ -8,7 +8,7 @@
     body { font-family: sans}
     button { font-size: 14pt }
     .row { display: flex; margin: .6em 0; align-items: center }
-    .row button, .row input[type=range] { flex-grow: 1; margin: .2em; height: 3em}
+    .row button, .row input[type=range], .row select { flex-grow: 1; margin: .2em; height: 3em}
 
     #out { display: none; position: absolute; bottom: 0; left: 0; background: #eee; overflow: scroll; width: 100%; height: 12em; padding: 0.5em }
 
@@ -44,7 +44,7 @@
         <option value='dlc/tu003410_minified_chilli.dlc'>Chilli Test</option>
         <option value='dlc/tu012700.dlc'>TU012700</option>
     </select>
-    <button onclick="fetchAndUploadDLC(dlcsel.options[dlcsel.selectedIndex].value)">Upload</button>
+    <button onclick="fetchAndUploadDLC(dlcsel.options[dlcsel.selectedIndex].value)">Upload DLC</button>
 </div>
 <progress id='dlcprogress'></progress>
 <div id="out" style="white-space:pre">Console Log
