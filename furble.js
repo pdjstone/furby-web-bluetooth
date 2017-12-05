@@ -183,7 +183,8 @@ async function getAllDLCInfo() {
 
 async function getDLCSlotInfo(slot) {
     let buf = await sendGPCmd([0x73, slot], [0x73]);
-    // 73 0d 5455303032393439 04c95a 2754ea15 - 73, slot number, filename (minus extension), length, checksum??
+    return buf;
+    // 73 0d 5455303032393439 04c95a 2754ea15 - 73, slot number, filename (minus extension), length, adler32 checksum
 }
 
 function deleteDLC(slot) {
@@ -248,8 +249,8 @@ async function fetchAndUploadDLC(dlcurl) {
         progress.style.display = 'block';
         progress.removeAttribute('value');
         let c = 0;
-        log('Clearing all DLC slots...');
-        await deleteAllDLCSlots();
+        //log('Clearing all DLC slots...');
+        //await deleteAllDLCSlots();
         await enableEyes(false); // eyes off, save battery
         await setAntennaColor(0,0,0);
         let name = 'TU' + Math.floor(Math.random()*10000).toString().padStart(6,'0') + '.DLC';
@@ -260,6 +261,7 @@ async function fetchAndUploadDLC(dlcurl) {
                 console.log(`transfer: ${current}/${total} maxRx:${maxRx}`);
             c++;
         });
+        
         let slots = await getDLCInfo();
         let filledSlot = slots.indexOf(SLOT_FILLED);
         let activeSlot = slots.indexOf(SLOT_ACTIVE);
@@ -273,6 +275,7 @@ async function fetchAndUploadDLC(dlcurl) {
         slots = await getDLCInfo();
         if (slots.indexOf(SLOT_ACTIVE) != filledSlot)
             throw new Error('Failed to activate');
+        
     } catch (e) {
         log('Upload failed');
         console.log(e);
@@ -301,6 +304,7 @@ function uploadDLC(dlcbuf, filename, progresscb) {
     let CHUNK_SIZE = 20;
     let MAX_BUFFERED_PACKETS = 10;
     let maxRx = 0;
+    let failedWrites = 0;
 
     return new Promise((resolve, reject) => {
         let transferNextChunk = () => {
@@ -323,11 +327,18 @@ function uploadDLC(dlcbuf, filename, progresscb) {
                     else 
                         log('Sent final packet');
                 }).catch(error => {
-                    //isTransferring = false;
                     //removeGPListenCallback(hnd)
-                    log('FileWrite.writeValue failed, will retry');
                     console.log(error);
-                    setTimeout(transferNextChunk, 16);
+                    if (++failedWrites > 3) {
+                        log('FileWrite.writeValue failed, will retry');
+                        setTimeout(transferNextChunk, 16);
+                    } else {
+                        log('FileWrite.writeValue failed, giving up after too many failures');
+                        isTransferring = false;
+                        removeGPListenCallback(hnd);
+                        reject(error);
+                    }
+                    
                     //reject(error);
                 });  
             } else {
