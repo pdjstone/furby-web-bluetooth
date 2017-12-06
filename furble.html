@@ -36,23 +36,26 @@
     <button onclick='triggerAction(39,3,8,1)'>Legendary!</button>
     <button onclick='triggerAction(39,4,6,1)'>Nice</button>
     <button onclick='triggerAction(39,3,1,1)'>Hey, hey</button>
-    <button onclick='triggerAction(75,0,3,4)'>Custom 1</button>
-    <button onclick='triggerAction(75,0,4,4)'>Custom 2</button>
+</div>
+
+<div class='row'>
+        <button onclick='triggerAction(75,0,3,4)'>Custom 1</button>
+        <button onclick='triggerAction(75,0,4,4)'>Custom 2</button>
 </div>
 
 <div class='row'>
     <select id='dlcname'>
         <option value='dlc/tu003410_ctxlogo.dlc'>Context Logo</option>
+        <option value='dlc/context.dlc'>Context Logo (Darkside)</option>
         <option value='dlc/tu003410_minified_chilli.dlc'>Chilli Test</option>
         <option value='dlc/tu003410_rotdots.dlc'>Rotdots</option>
         <option value='dlc/tu003410_testpal.dlc'>Testpal</option>
         <option value='dlc/tu012700.dlc'>TU012700</option>
         <option value='dlc/tu003410.dlc'>TU003410</option>
-        <option value='dlc/reliably_minified.dlc'>Reliably Minified</option>
         <option value='dlc/AMF_PAL_CEL_SEQ_SPR_5.dlc'>Test PAL/CEL/SPR</option>
         <option value='dlc/no_images_2.dlc'>Audio test</option>
-        <option value='dlc/hacked2.dlc'>Hacked</option>
-        <option value='dlc/hacked_flash.dlc'>Hacked (flashing)</option>
+        <option value='dlc/hacked_flash.dlc'>Hacked (blink long)</option>
+        <option value='dlc/hacked_flash_shortened.dlc'>Hacked (blink short)</option>
     </select>
     <button onclick="fetchAndUploadDLC(dlcsel.options[dlcsel.selectedIndex].value)">Upload DLC</button>
 </div>
