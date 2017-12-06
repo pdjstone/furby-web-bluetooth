@@ -174,16 +174,29 @@ async function getAllDLCInfo() {
     let allSlotsInfo = await getDLCInfo();
     console.log(allSlotsInfo);
     var slots = [];
-    for (let i=0; i<14; i++) {
-        slots[i] = await getDLCSlotInfo(i);
+    for (let i=0; i < allSlotsInfo.length; i++) {
+        if (allSlotsInfo[i] != SLOT_EMPTY)
+            slots[i] = await getDLCSlotInfo(i);
     }
-    for (let i=0; i<slots.length; i++)
-        log(`slot ${i}: ` + buf2hex(slots[i])); 
+    console.log(slots);
 }
 
 async function getDLCSlotInfo(slot) {
-    let buf = await sendGPCmd([0x73, slot], [0x73]);
-    return buf;
+    let buf = await sendGPCmd([0x73, slot], [0x73, slot]);
+    //log('Got slot info', buf);
+    var props = {};
+    props.len = buf.getUint32(9) & 0xffffff;
+    if (props.len > 0) {
+        let namebuf = new DataView(buf.buffer, 2, 8);
+        let decoder = new TextDecoder('utf-8');
+        props.name = decoder.decode(namebuf);
+        props.checksum =  buf.getUint32(13);
+        log(`slot ${slot} name: ${props.name}, length: ${props.len} chksum: 0x` + props.checksum.toString(16));
+    } else {
+        log(`slot ${slot} is empty`);
+    }
+    
+    return props;
     // 73 0d 5455303032393439 04c95a 2754ea15 - 73, slot number, filename (minus extension), length, adler32 checksum
 }
 
@@ -477,14 +490,12 @@ async function doConnect() {
 
     //await triggerAction(39,4,2,0); // 'get ready'
 
-    for (let i=0; i < 3; i++) {
-        await setAntennaColor(255,0,0);
-        await sleep(500);
-        await setAntennaColor(0,255,0);
-        await sleep(500);
-        await setAntennaColor(0,0,255);
-        await sleep(500);
-    }
-
+    await setAntennaColor(255,0,0);
+    await sleep(600);
+    await setAntennaColor(0,255,0);
+    await sleep(600);
+    await setAntennaColor(0,0,255);
+    await sleep(600);
+    
     startKeepAlive();
 }
