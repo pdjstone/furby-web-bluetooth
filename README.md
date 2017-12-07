@@ -7,21 +7,30 @@ Use Web Bluetooth to control your Furby Connect. Tested with Chrome for Android.
 - Upload and activate DLC files
 
 ### TODO
+- Show status/error messages in UI
 - Buttons for more actions
 - Decode and display Furby state (e.g. antenna joystick, body sensors etc..)
 
-## Troubleshooting FAQ
-
+## Troubleshooting tips
 WebBluetooth in Chrome for Android can be a bit buggy occasionally. If the Furby doesn't show up in the list when you try to connect, try quitting Chrome, then disable and re-enable bluetooth on your phone.
 
 Make sure the batteries in your Furby aren't running low. This can cause the Furby to misbehave in odds ways, including going to sleep unexpectedly.
 
-If nothing else is working, you can reset the Furby by following these steps:
+If your Furby appears to be rejecting connections, try switching it off and on again. Do this by pushing the antenna down for ~5 seconds until the Furby goes to sleep, then waking it up again. Note that putting on the sleep mask seems to put the Furby into standby without actually resetting anything.
+
+If nothing else is working, you can reset the Furby (and clear the DLC storage area) by following these steps:
 1. Wake Furby up
-2. Hold Furby updside down
+2. Hold Furby upside down
 3. Hold down the Furby's tongue
-4. Pull Furby's tail until the eyes go dark (~8 seconds)
+4. Pull Furby's tail until the eyes go dark (~10 seconds)
 5. You should hear a couple of quiet pops from the speaker as it resets
+
+## Development and Debugging
+
+I used the following setup to develop/debug this:
+- Serve the repo from a local HTTP server (e.g. run python3 -m http.server 8000)
+- Use Chrome's [remote debugging](https://developers.google.com/web/tools/chrome-devtools/remote-debugging/) feature to forward port 8000 to your Android phone
+- Load localhost:8000 in Chrome on your phone
 
 
 ## Further Reading
