@@ -159,7 +159,6 @@ async function getDLCInfo() {
     let filledSlots = (buf.getUint8(3) << 8) |  buf.getUint8(4);
     let activeSlots = (buf.getUint8(7) << 8) |  buf.getUint8(8);
     let slots = [];
-    log('filled slots:', filledSlots.toString(16));
     for (let i=0; i < 14; i++) {
         slots[i] = 0;
         if (filledSlots & (1 << i))
@@ -254,8 +253,10 @@ async function fetchAndUploadDLC(dlcurl) {
     let response = await fetch(dlcurl);
     if (response.status != 200)
         throw new Error('Failed to fetch DLC', dlcurl);
-    log('Fetched DLC from server:', dlcurl);
+    
     let buf = await response.arrayBuffer();
+    let chksumOriginal = adler32(buf);
+    log('Fetched DLC from server:', dlcurl, ' checksum 0x' + chksumOriginal.toString(16));
     var progress = document.getElementById('dlcprogress');
     progress.max = buf.byteLength;
     try {
@@ -281,9 +282,15 @@ async function fetchAndUploadDLC(dlcurl) {
         if (filledSlot == -1)
             throw new Error('Upload failed - no slots filled');
         
-        if (activeSlot != -1) 
+        if (activeSlot != -1) {
+            log('deactivating old DLC in slot ' + activeSlot);
             await deactivateDLC(activeSlot)
+        }
         
+        let slotInfo = await getDLCSlotInfo(filledSlot);
+        if (slotInfo.checksum != chksumOriginal) {
+            throw new Error('Expected checksum of 0x' + chksumOriginal.toString(16) + ' but got 0x' + slotInfo.checksum.toString(16));
+        }
         await loadAndActivateDLC(filledSlot);
         slots = await getDLCInfo();
         if (slots.indexOf(SLOT_ACTIVE) != filledSlot)
@@ -298,6 +305,27 @@ async function fetchAndUploadDLC(dlcurl) {
         await enableEyes(true); // eyes on
         await setAntennaColor(0,255,0);
     }
+}
+
+function adler32(buf) {
+    const MOD_ADLER = 65521;
+    let dv = new DataView(buf);
+    let a=1, b=0;
+    for (let i=0; i < buf.byteLength; i++) {
+        a = (a + dv.getUint8(i)) % MOD_ADLER;
+        b = (b + a) % MOD_ADLER;
+    }
+    console.log(a,b);
+    let checksum = (b << 16) >>> 0;
+    return (checksum | a) >>> 0;
+}
+
+async function adler32test(url) {
+    let resp = await fetch(url);
+    let buf = await resp.arrayBuffer();
+    console.log(buf);
+    let checksum = adler32(buf);
+    console.log('0x' + checksum.toString(16));
 }
 
 function uploadDLC(dlcbuf, filename, progresscb) {
