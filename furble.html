@@ -6,43 +6,96 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
     body { font-family: sans}
-    button { font-size: 14pt }
+    button, input, select { font-size: 14pt }
     .row { display: flex; margin: .6em 0; align-items: center }
-    .row button, .row input[type=range], .row select { flex-grow: 1; margin: .2em; height: 3em}
+    .row button, .row input, .row select { flex-grow: 1; margin: .2em; height: 3em}
 
-    #out { display: none; position: absolute; bottom: 0; left: 0; background: #eee; overflow: scroll; width: 100%; height: 12em; padding: 0.5em }
+    #console { 
+        position: absolute; 
+        bottom: 0; left: 0; 
+        background: #eee; 
+        left:0;
+        right: 0;
+        padding: 0.5em;
 
+    }
+
+    #out {
+        overflow-y: scroll; 
+        height:2em;
+        transition-property: height;
+        transition-duration: 0.3s;
+    }
+
+    #out.expanded {
+        height: 25em; 
+    }
+
+    body.keyboard #console { display: none }
+    
+    #console h2 { margin: 0; padding: 0 }
     h1 { font-size: 15pt; margin: 0 0 0.3em 0}
     progress { width: 100%; display:none}
+
+    #status { 
+        position: absolute; 
+        font-size: 20pt;
+        top:0;
+        left:0; 
+        right: 0;
+        padding: .2em;
+        color: white;
+        text-align: center;
+        box-shadow: 0px 5px 5px rgba(0,0,0,0.2);
+        transform: translateX(-100%);
+        transition-property: transform;
+        transition-duration: 0.3s;
+        }
+    #status.on { transform: translateX(0);}
+    #status.error { background-color: rgb(226, 52, 52) }
+    #status.ok { background-color: rgb(53, 185, 0) }
 </style>
+
 </head>
 <body>
-
+<div id='status' class='ok'>Connected!</div>
 
 <div class='row'>
     <div><h1>FurBLE Demo</h1>
     State: <span id="state">Not connected</span></div>
     <button id="connbtn" onclick="doConnectDisconnect()">Connect</button>
 </div>
-
+<div id='furby-buttons'>
+Antenna
 <div class='row'>
     <button onclick='setAntennaColor(255, 0,0)'>Red</button>
     <button onclick='setAntennaColor(0, 255,0)'>Green</button>
     <button onclick='setAntennaColor(0, 0, 255)'>Blue</button>
-    <button onclick='cycleDebug()'>Eye Debug</button>
+    <button onclick='setAntennaColor(255, 255, 255)'>White</button>
 </div>
 
+Phrases
 <div class='row'>
     <button onclick='triggerAction(39,3,8,1)'>Legendary!</button>
     <button onclick='triggerAction(39,4,6,1)'>Nice</button>
     <button onclick='triggerAction(39,3,1,1)'>Hey, hey</button>
 </div>
+<div class='row'>
+    <input type='number' min='0' max='75' name='furby-action' value='39'>
+    <input type='number' min='0' max='4' name='furby-action' value='0'>
+    <input type='number' min='0' max='30' name='furby-action' value='0'>
+    <input type='number' min='0' max='10' name='furby-action' value='0'>
+    <button onclick='customAction()'>Send</button>
+</div>
+
 
 <div class='row'>
+        <button onclick='cycleDebug()'>Eye Debug</button>
         <button onclick='triggerAction(75,0,3,4)'>Custom 1</button>
         <button onclick='triggerAction(75,0,4,4)'>Custom 2</button>
 </div>
 
+DLC Files
 <div class='row'>
     <select id='dlcname'>
         <option value='dlc/tu003410_ctxlogo.dlc'>Context Logo</option>
@@ -57,18 +110,50 @@
         <option value='dlc/hacked_flash.dlc'>Hacked (blink long)</option>
         <option value='dlc/hacked_flash_shortened.dlc'>Hacked (blink short)</option>
     </select>
-    <button onclick="fetchAndUploadDLC(dlcsel.options[dlcsel.selectedIndex].value)">Upload DLC</button>
+    <button onclick="fetchAndUploadDLC(dlcsel.options[dlcsel.selectedIndex].value)">Upload</button>
+</div>
 </div>
 <progress id='dlcprogress'></progress>
-<div id="out" style="white-space:pre">Console Log
 
+<div id="console">
+    <h2 onclick='toggleConsole()'>Console</h2>
+<div id="out" style="white-space:pre"></div>
 </div>
 <script>
     var dlcsel = document.getElementById('dlcname');
     var s = document.createElement('script');
-    s.src='furble.js?' + Math.random();
+    s.src = 'furble.js?' + Math.random();
     document.body.appendChild(s);
-    s.onload = () => log('ready!');
+    s.onload = () => {
+        log('ready!');
+        enableButtons(false);
+    }
+    
+var out = document.getElementById('out');
+out.addEventListener('transitionend', e => out.scrollTop=out.scrollHeight);
+function toggleConsole() {
+    out.classList.toggle('expanded');
+}
+
+document.querySelectorAll('input[type=number]').forEach(el => {
+    el.addEventListener('focus', () => document.body.classList.add('keyboard'));
+    el.addEventListener('blur', () => document.body.classList.remove('keyboard'));
+})
+
+function showStatus(msg, cls) {
+    let el = document.getElementById('status');
+    el.className = '';
+    el.classList.add('on');
+    el.classList.add(cls);
+    el.textContent = msg;
+    setTimeout(() => el.classList.remove('on'), 1500);
+    log(cls + ': ' + msg);
+}
+
+var msg = {
+    ok: s => showStatus(s, 'ok'),
+    error: s => showStatus(s, 'error'),
+};
 </script>
 
 </body>
