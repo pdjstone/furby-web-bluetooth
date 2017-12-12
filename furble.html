@@ -116,7 +116,7 @@ DLC Files
 <progress id='dlcprogress'></progress>
 
 <div id="console">
-    <h2 onclick='toggleConsole()'>Console</h2>
+    <h2 onclick='toggleConsole()'>Console (tap to expand)</h2>
 <div id="out" style="white-space:pre"></div>
 </div>
 <script>
@@ -136,8 +136,11 @@ function toggleConsole() {
 }
 
 document.querySelectorAll('input[type=number]').forEach(el => {
-    el.addEventListener('focus', () => document.body.classList.add('keyboard'));
-    el.addEventListener('blur', () => document.body.classList.remove('keyboard'));
+    el.addEventListener('focus', () => {
+        el.select();
+        document.body.classList.add('keyboard');
+    });
+    el.addEventListener('blur', el => document.body.classList.remove('keyboard'));
 })
 
 function showStatus(msg, cls) {
