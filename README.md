@@ -4,10 +4,10 @@ Use Web Bluetooth to control your Furby Connect. Tested with Chrome for Android.
 ### Working
 - Connect to / disconnect from Furby
 - Send basic commands (e.g. actions, set antenna colour)
+- Send custom action numbers (see [list of action sequences](https://github.com/Jeija/bluefluff/blob/master/doc/actions.md))
 - Upload and activate DLC files
 
 ### TODO
-- Show status/error messages in UI
 - Buttons for more actions
 - Decode and display Furby state (e.g. antenna joystick, body sensors etc..)
 
@@ -31,7 +31,7 @@ I used the following setup to develop/debug this:
 - Serve the repo from a local HTTP server (e.g. run python3 -m http.server 8000)
 - Use Chrome's [remote debugging](https://developers.google.com/web/tools/chrome-devtools/remote-debugging/) feature to forward port 8000 to your Android phone
 - Load localhost:8000 in Chrome on your phone
-
+- Use the remote Javascript console in desktop Chrome to debug
 
 ## Further Reading
 - Reverse Engineering the Furby Connect: https://www.contextis.com/blog/dont-feed-them-after-midnight-reverse-engineering-the-furby-connect
