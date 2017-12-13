@@ -181,14 +181,23 @@ async function getDLCInfo() {
 
 async function getAllDLCInfo() {
     let allSlotsInfo = await getDLCInfo();
-    console.log(allSlotsInfo);
     var slots = [];
     for (let i=0; i < allSlotsInfo.length; i++) {
-        if (allSlotsInfo[i] != SLOT_EMPTY)
+        if (allSlotsInfo[i] != SLOT_EMPTY) {
             slots[i] = await getDLCSlotInfo(i);
+            slots[i].status = allSlotsInfo[i];
+        }
     }
     console.log(slots);
 }
+
+async function getActiveSlotInfo() {
+    let allSlotsInfo = await getDLCInfo();
+    let activeSlot = allSlotsInfo.indexOf(SLOT_ACTIVE);
+    if (activeSlot == -1) return null;
+    return await getDLCSlotInfo(activeSlot);
+}
+
 
 async function getDLCSlotInfo(slot) {
     let buf = await sendGPCmd([0x73, slot], [0x73, slot]);
@@ -259,6 +268,10 @@ function handleNordicNotification(event) {
         nordicListener(event.target.value);
 }
 
+function makeDLCFilename(dlcurl) {
+    return dlcurl.substr(dlcurl.lastIndexOf('/') + 1).padStart(12, '_').toUpperCase();
+}
+
 async function fetchAndUploadDLC(dlcurl) {
     let response = await fetch(dlcurl);
     if (response.status != 200) {
@@ -280,7 +293,7 @@ async function fetchAndUploadDLC(dlcurl) {
         //await deleteAllDLCSlots();
         await enableEyes(false); // eyes off, save battery
         await setAntennaColor(0,0,0);
-        let name = 'TU' + Math.floor(Math.random()*10000).toString().padStart(6,'0') + '.DLC';
+        let name = makeDLCFilename(dlcurl);
         let started = false;
         await uploadDLC(buf, name, (current, total, maxRx) => {
             if (c % 100 == 0) 
@@ -289,13 +302,13 @@ async function fetchAndUploadDLC(dlcurl) {
                 console.log(`transfer: ${current}/${total} maxRx:${maxRx}`);
             if (!started) {
                 started = true;
-                msg.ok('Uploading...');
+                msg.ok('Eyes off while Uploading...');
             }
             c++; 
         });
         msg.ok('DLC uploaded!');
     } catch (e) {
-        msg.err('DLC upload failed :(');
+        msg.error('DLC upload failed :(');
         log(e.message);
         console.error(e);
         await setAntennaColor(255,0,0);
@@ -328,7 +341,7 @@ async function fetchAndUploadDLC(dlcurl) {
         msg.ok('DLC activated!');
         await setAntennaColor(0,255,0);
     } catch (e) {
-        msg.err('DLC activation failed :(');
+        msg.error('DLC activation failed :(');
         log(e.message);
         console.log(e);
         await setAntennaColor(255,0,0);
@@ -343,7 +356,6 @@ function adler32(buf) {
         a = (a + dv.getUint8(i)) % MOD_ADLER;
         b = (b + a) % MOD_ADLER;
     }
-    console.log(a,b);
     let checksum = (b << 16) >>> 0;
     return (checksum | a) >>> 0;
 }
@@ -521,6 +533,20 @@ function sleep(t) {
     return new Promise(resolve  => setTimeout(resolve, t));
 }
 
+async function checkActiveSlot() {
+    let activeSlot = await getActiveSlotInfo();
+    if (activeSlot) {
+        let filename = activeSlot.name.replace(/^_+/, '') + '.dlc'.toUpperCase();
+        log('current active slot is ' + activeSlot.name + ' looking for ' + filename);
+        for (k in dlcdata) {
+            if (k.toUpperCase() == filename) {
+                log('setting up buttons for ' + k);
+                setupDLCButtons(dlcdata[k]);
+            }
+        }
+    }
+}
+
 async function doConnect() {
     log('Requesting Bluetooth Devices with Furby name...');
     var server;
@@ -532,7 +558,7 @@ async function doConnect() {
         log('Connecting to GATT Server...');
         server = await device.gatt.connect();
     } catch (e) {
-        msg.error('failed to connect device');
+        msg.error('Failed to connect');
         log(e.message);
         return;
     }
@@ -571,7 +597,8 @@ async function doConnect() {
 
     startKeepAlive();
     onConnected();
-    
+    await checkActiveSlot();
+
     await setAntennaColor(255,0,0);
     await sleep(600);
     await setAntennaColor(0,255,0);

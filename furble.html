@@ -9,9 +9,10 @@
     button, input, select { font-size: 14pt }
     .row { display: flex; margin: .6em 0; align-items: center }
     .row button, .row input, .row select { flex-grow: 1; margin: .2em; height: 3em}
+    body *  { user-select: none }
 
     #console { 
-        position: absolute; 
+        position: fixed; 
         bottom: 0; left: 0; 
         background: #eee; 
         left:0;
@@ -20,6 +21,9 @@
 
     }
 
+    #console > h2::before { content: '+'; display: inline-block; margin: 0 .5em; width: 1em }
+    #console.expanded > h2::before { content: '—'}
+
     #out {
         overflow-y: scroll; 
         height:2em;
@@ -27,10 +31,11 @@
         transition-duration: 0.3s;
     }
 
-    #out.expanded {
+    #console.expanded #out {
         height: 25em; 
     }
 
+    button#hamburger { float: left }
     body.keyboard #console { display: none }
     
     #console h2 { margin: 0; padding: 0 }
@@ -50,89 +55,139 @@
         transform: translateX(-100%);
         transition-property: transform;
         transition-duration: 0.3s;
-        }
+    }
     #status.on { transform: translateX(0);}
     #status.error { background-color: rgb(226, 52, 52) }
     #status.ok { background-color: rgb(53, 185, 0) }
+
+    #menu { 
+        position: fixed; 
+        left: 0; 
+        top: 0; 
+        bottom: 0; 
+        color: white;
+        background-color: rgb(7, 68, 117); 
+        
+        transform: translateX(-100%);
+        transition-property: transform;
+        transition-duration: 0.3s;
+    }
+
+    #menu h2 { padding: 0em 2em }
+    #menu a { 
+        color: white; 
+        text-decoration: none; 
+        display: block; 
+        padding: 1em 2em;
+    }
+
+    #menu a.current { 
+        background-color: lightblue;
+        color: black;
+    }
+
+    #hamburger:focus + #menu { 
+        transform: translateX(0);
+        box-shadow: 5px 0px 5px rgba(0,0,0,0.4);
+    }
+    #menu ul { padding: 0 }
+    #menu li { list-style: none; padding: 0; margin: 0}
+
+    section { display: none}
+
+    section.current { display: block }
 </style>
 
 </head>
 <body>
-<div id='status' class='ok'>Connected!</div>
 
+<div id='status' class='ok'>Connected!</div>
+<button id='hamburger'>☰</button>
+<div id='menu'>
+    <h2>FurBLE</h2>
+        <ul>
+
+            <li><a href='#actions'>Actions</a></li>
+            <li><a href='#misc'>Misc</a></li>
+            <li><a href='#dlc'>DLC Upload</a></li>
+            <li><a href='#sensors'>Sensors</a></li>
+            <li><a href='#debug'>Debug</a></li>
+        </ul>
+    </div>
 <div class='row'>
-    <div><h1>FurBLE Demo</h1>
-    State: <span id="state">Not connected</span></div>
+    <div><h1>FurBLE</h1>
+    <span id="state">Not connected</span></div>
     <button id="connbtn" onclick="doConnectDisconnect()">Connect</button>
 </div>
 <div id='furby-buttons'>
-Antenna
-<div class='row'>
-    <button onclick='setAntennaColor(255, 0,0)'>Red</button>
-    <button onclick='setAntennaColor(0, 255,0)'>Green</button>
-    <button onclick='setAntennaColor(0, 0, 255)'>Blue</button>
-    <button onclick='setAntennaColor(255, 255, 255)'>White</button>
+
+<section id='misc'>
+    <h2>Misc buttons</h2>
+    <div class='row'>
+        <button onclick='setAntennaColor(255, 0,0)'>Red</button>
+        <button onclick='setAntennaColor(0, 255,0)'>Green</button>
+        <button onclick='setAntennaColor(0, 0, 255)'>Blue</button>
+        <button onclick='setAntennaColor(255, 255, 255)'>White</button>
+    </div>
+</section>
+
+<section id='actions'>
+    <h2>Action Sequences</h2>
+    <div class='row' id='dlc-actions'></div>
+    <div class='row'>
+        <button onclick='triggerAction(39,3,8,1)'>Legendary!</button>
+        <button onclick='triggerAction(39,4,6,1)'>Nice</button>
+        <button onclick='triggerAction(39,3,1,1)'>Hey, hey</button>
+    </div>
+    <div class='row'>
+        <input type='number' min='0' max='75' name='furby-action' value='39'>
+        <input type='number' min='0' max='4' name='furby-action' value='0'>
+        <input type='number' min='0' max='30' name='furby-action' value='0'>
+        <input type='number' min='0' max='10' name='furby-action' value='0'>
+        <button onclick='customAction()'>Send</button>
+    </div>
+</section>
+
+<section id='debug'>
+    <h2>Debug</h2>
+    <div class='row'>
+        <button onclick='cycleDebug()'>Eye Debug</button>   
+    </div>
+</section>
+
+<section id='dlc'>
+    DLC Files
+    <div class='row'>
+        <select id='dlcname'>
+        </select>
+        <button onclick="dlcUploadClicked()">Upload</button>
+    </div>
+    <progress id='dlcprogress'></progress>
+</section>
+
 </div>
 
-Phrases
-<div class='row'>
-    <button onclick='triggerAction(39,3,8,1)'>Legendary!</button>
-    <button onclick='triggerAction(39,4,6,1)'>Nice</button>
-    <button onclick='triggerAction(39,3,1,1)'>Hey, hey</button>
-</div>
-<div class='row'>
-    <input type='number' min='0' max='75' name='furby-action' value='39'>
-    <input type='number' min='0' max='4' name='furby-action' value='0'>
-    <input type='number' min='0' max='30' name='furby-action' value='0'>
-    <input type='number' min='0' max='10' name='furby-action' value='0'>
-    <button onclick='customAction()'>Send</button>
-</div>
-
-
-<div class='row'>
-        <button onclick='cycleDebug()'>Eye Debug</button>
-        <button onclick='triggerAction(75,0,3,4)'>Custom 1</button>
-        <button onclick='triggerAction(75,0,4,4)'>Custom 2</button>
-</div>
-
-DLC Files
-<div class='row'>
-    <select id='dlcname'>
-        <option value='dlc/tu003410_ctxlogo.dlc'>Context Logo</option>
-        <option value='dlc/context.dlc'>Context Logo (Darkside)</option>
-        <option value='dlc/tu003410_minified_chilli.dlc'>Chilli Test</option>
-        <option value='dlc/tu003410_rotdots.dlc'>Rotdots</option>
-        <option value='dlc/tu003410_testpal.dlc'>Testpal</option>
-        <option value='dlc/tu012700.dlc'>TU012700</option>
-        <option value='dlc/tu003410.dlc'>TU003410</option>
-        <option value='dlc/AMF_PAL_CEL_SEQ_SPR_5.dlc'>Test PAL/CEL/SPR</option>
-        <option value='dlc/no_images_2.dlc'>Audio test</option>
-        <option value='dlc/hacked_flash.dlc'>Hacked (blink long)</option>
-        <option value='dlc/hacked_flash_shortened.dlc'>Hacked (blink short)</option>
-    </select>
-    <button onclick="fetchAndUploadDLC(dlcsel.options[dlcsel.selectedIndex].value)">Upload</button>
-</div>
-</div>
-<progress id='dlcprogress'></progress>
 
 <div id="console">
-    <h2 onclick='toggleConsole()'>Console (tap to expand)</h2>
+    <h2 onclick='toggleConsole()'>Console</h2>
 <div id="out" style="white-space:pre"></div>
 </div>
 <script>
-    var dlcsel = document.getElementById('dlcname');
-    var s = document.createElement('script');
-    s.src = 'furble.js?' + Math.random();
-    document.body.appendChild(s);
-    s.onload = () => {
-        log('ready!');
-        enableButtons(false);
-    }
+var dlcsel = document.getElementById('dlcname');
+var s = document.createElement('script');
+s.src = 'furble.js?' + Math.random();
+document.body.appendChild(s);
+s.onload = () => {
+    log('ready!');
+    enableButtons(false);
+    showSection('dlc');
+    loadDLCIndex();
+}
     
 var out = document.getElementById('out');
 out.addEventListener('transitionend', e => out.scrollTop=out.scrollHeight);
 function toggleConsole() {
-    out.classList.toggle('expanded');
+    document.getElementById('console').classList.toggle('expanded');
 }
 
 document.querySelectorAll('input[type=number]').forEach(el => {
@@ -157,6 +212,64 @@ var msg = {
     ok: s => showStatus(s, 'ok'),
     error: s => showStatus(s, 'error'),
 };
+
+
+window.onhashchange = () => showSection(location.hash.substr(1));
+let currentSection = '';
+function showSection(section) {
+    if (currentSection) {
+        try {
+            document.querySelector('section#' + currentSection).classList.remove('current');
+            document.querySelector(`a[href="#${currentSection}`).classList.remove('current');
+        } catch (e) {}
+        
+    }
+    currentSection = section;
+    document.querySelector('section#' + currentSection).classList.add('current');
+    document.querySelector(`a[href="#${currentSection}`).classList.add('current');
+}
+
+async function loadDLCIndex() {
+    let resp = await fetch('dlc/_index.json');
+    let data = await resp.json();
+
+    for (let dlc of data) {
+        let opt = document.createElement('option');
+        if (dlc.file.length > 12) 
+            throw new Error('DLC filename must be <= 12 chars, got ' + dlc.file);
+        dlcdata[dlc.file] = dlc;
+        opt.value = dlc.file;
+        opt.textContent = dlc.title;
+        dlcsel.appendChild(opt);
+    }
+}
+
+async function dlcUploadClicked() {
+    let dlcfile = dlcsel.options[dlcsel.selectedIndex].value;
+    let params = dlcdata[dlcfile];
+    console.log('DLC upload clicked', params);
+    await fetchAndUploadDLC('dlc/'+dlcfile);
+    setupDLCButtons(params);
+    showSection('actions');
+}
+
+function setupDLCButtons(dlcParams) {
+    let container = document.getElementById('dlc-actions');
+    container.childNodes.forEach(el => el.parentNode.removeChild(el));
+    dlcParams.buttons.forEach(p => {
+        let button = document.createElement('button');
+        button.textContent = p.title;
+        button.onclick = () => {
+            log('Triggering ' + p.title + ' for dlc ' + dlcParams.file);
+            triggerAction.apply(null, p.action);
+        };
+        container.appendChild(button);
+    });
+}
+
+let dlcdata = {};
+
+
 </script>
 
 </body>
