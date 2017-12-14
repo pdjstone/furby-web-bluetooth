@@ -1,0 +1,91 @@
+body { font-family: sans}
+button, input, select { font-size: 14pt }
+.row { display: flex; margin: .6em 0; align-items: center }
+.row button, .row input, .row select { flex-grow: 1; margin: .2em; height: 3em}
+body *  { user-select: none }
+
+#console { 
+    position: fixed; 
+    bottom: 0; left: 0; 
+    background: #eee; 
+    left:0;
+    right: 0;
+    padding: 0.5em;
+
+}
+
+#console > h2::before { content: '+'; display: inline-block; margin: 0 .5em; width: 1em }
+#console.expanded > h2::before { content: '—'}
+
+#out {
+    overflow-y: scroll; 
+    height:2em;
+    transition-property: height;
+    transition-duration: 0.3s;
+}
+
+#console.expanded #out {
+    height: 25em; 
+}
+
+button#hamburger { float: left }
+body.keyboard #console { display: none }
+
+#console h2 { margin: 0; padding: 0 }
+h1 { font-size: 15pt; margin: 0 0 0.3em 0}
+progress { width: 100%; display:none}
+
+#status { 
+    position: absolute; 
+    font-size: 20pt;
+    top:0;
+    left:0; 
+    right: 0;
+    padding: .2em;
+    color: white;
+    text-align: center;
+    box-shadow: 0px 5px 5px rgba(0,0,0,0.2);
+    transform: translateX(-100%);
+    transition-property: transform;
+    transition-duration: 0.3s;
+}
+#status.on { transform: translateX(0);}
+#status.error { background-color: rgb(226, 52, 52) }
+#status.ok { background-color: rgb(53, 185, 0) }
+
+#menu { 
+    position: fixed; 
+    left: 0; 
+    top: 0; 
+    bottom: 0; 
+    color: white;
+    background-color: rgb(7, 68, 117); 
+    
+    transform: translateX(-100%);
+    transition-property: transform;
+    transition-duration: 0.3s;
+}
+
+#menu h2 { padding: 0em 2em }
+#menu a { 
+    color: white; 
+    text-decoration: none; 
+    display: block; 
+    padding: 1em 2em;
+}
+
+#menu a.current { 
+    background-color: lightblue;
+    color: black;
+}
+
+#hamburger:focus + #menu { 
+    transform: translateX(0);
+    box-shadow: 5px 0px 5px rgba(0,0,0,0.4);
+}
+#menu ul { padding: 0 }
+#menu li { list-style: none; padding: 0; margin: 0}
+
+section { display: none}
+
+section.current { display: block }
