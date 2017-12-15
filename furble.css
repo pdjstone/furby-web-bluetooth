@@ -18,7 +18,7 @@ body *  { user-select: none }
     left:0;
     right: 0;
     padding: 0.5em;
-
+    user-select: all;
 }
 
 #console > h2::before { content: '+'; display: inline-block; margin: 0 .5em; width: 1em }
@@ -29,6 +29,7 @@ body *  { user-select: none }
     height:2em;
     transition-property: height;
     transition-duration: 0.3s;
+    user-select: all;
 }
 
 #console.expanded #out {
