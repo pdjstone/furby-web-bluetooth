@@ -117,4 +117,4 @@ section { display: none}
 
 section.current { display: block }
 
-#actions input[type=number] { width: 2em }
+#actions input[type=number] { width: 2em; text-align: center; border: 2px solid var(--bg-primary); height: 2em}
