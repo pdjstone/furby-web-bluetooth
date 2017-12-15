@@ -94,7 +94,7 @@ document.body.appendChild(s);
 s.onload = () => {
     log('ready!');
     enableButtons(false);
-    showSection('dlc');
+    updateCurrentSection();
     loadDLCIndex();
 }
     
@@ -127,9 +127,16 @@ var msg = {
     error: s => showStatus(s, 'error'),
 };
 
-window.onhashchange = () => showSection(location.hash.substr(1));
+function updateCurrentSection() {
+    let current = location.hash.substr(1);
+    if (current == '') current = 'dlc';
+    showSection(current);
+}
+
+window.onhashchange = updateCurrentSection; 
 let currentSection = '';
 let dlcdata = {};
+
 
 function showSection(section) {
     if (currentSection) {
