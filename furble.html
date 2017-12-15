@@ -8,9 +8,11 @@
 </head>
 <body>
 
+<!-- for slide-in status messages -->
 <div id='status' class='ok'>Connected!</div>
-<button id='hamburger'>☰</button>
 
+<!-- menu button and menu -->
+<button id='hamburger'>☰</button>
 <div id='menu'>
     <h2>FurBLE</h2>
     <ul>
@@ -22,10 +24,12 @@
     </ul>
 </div>
 
-<div class='row'>
+
+<div class='header'>
+        <button id='connbtn' onclick='doConnectDisconnect()'>Connect</button>
     <div><h1>FurBLE</h1>
     <span id='state'>Not connected</span></div>
-    <button id='connbtn' onclick='doConnectDisconnect()'>Connect</button>
+    
 </div>
 
 <div id='furby-buttons'>
@@ -77,9 +81,9 @@
 </div>
 
 
-<div id='console'>
-    <h2 onclick='toggleConsole()'>Console</h2>
-    <div id='out' style='white-space:pre'></div>
+<div id="console">
+    <button onclick='log2clipboard()' class='clip'>Copy to Clipboard</button> <h2 onclick='toggleConsole()'>Console</h2>
+<div id="out" style="white-space:pre"></div>
 </div>
 
 <script>
@@ -176,6 +180,14 @@ function setupDLCButtons(dlcParams) {
         };
         container.appendChild(button);
     });
+}
+
+function log2clipboard() {
+    let evt = new ClipboardEvent('copy', { 
+        dataType: 'text/plain',
+        data: out.textContent});
+    document.dispatchEvent(evt);
+    msg.ok('Copied to clipboard');
 }
 
 </script>

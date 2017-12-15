@@ -1,5 +1,12 @@
+@charset "utf-8";
+
+:root {
+    --bg-primary: rgb(243, 0, 170);
+}
+
 body { font-family: sans}
 button, input, select { font-size: 14pt }
+input[type=number] { font-size: 20pt }
 .row { display: flex; margin: .6em 0; align-items: center }
 .row button, .row input, .row select { flex-grow: 1; margin: .2em; height: 3em}
 body *  { user-select: none }
@@ -15,7 +22,7 @@ body *  { user-select: none }
 }
 
 #console > h2::before { content: '+'; display: inline-block; margin: 0 .5em; width: 1em }
-#console.expanded > h2::before { content: '—'}
+#console.expanded > h2::before { content: '—' }
 
 #out {
     overflow-y: scroll; 
@@ -28,13 +35,32 @@ body *  { user-select: none }
     height: 25em; 
 }
 
-button#hamburger { float: left }
+button#hamburger { 
+    background-color: var(--bg-primary);
+    border: none;
+    font-size: 25pt;
+    padding: .3em .8em;
+    color: white;
+    font-weight: bold;
+    float: left; 
+    margin-left: -18px; 
+    -margin-top: -10px;
+    margin-right: -10px }
 body.keyboard #console { display: none }
 
 #console h2 { margin: 0; padding: 0 }
+#console .clip { float: right; display: none }
+#console.expanded .clip { display: inline-block }
+
 h1 { font-size: 15pt; margin: 0 0 0.3em 0}
 progress { width: 100%; display:none}
 
+.header  { color: white; 
+    background-color: var(--bg-primary); 
+    margin:-.5em -.5em 1em -.5em; 
+    padding: .5em
+}
+.header button { float: right; width: 30%; float: top; height: 3em }
 #status { 
     position: absolute; 
     font-size: 20pt;
@@ -59,7 +85,7 @@ progress { width: 100%; display:none}
     top: 0; 
     bottom: 0; 
     color: white;
-    background-color: rgb(7, 68, 117); 
+    background-color: var(--bg-primary); 
     
     transform: translateX(-100%);
     transition-property: transform;
@@ -69,14 +95,15 @@ progress { width: 100%; display:none}
 #menu h2 { padding: 0em 2em }
 #menu a { 
     color: white; 
+    font-weight: bold;
     text-decoration: none; 
     display: block; 
     padding: 1em 2em;
 }
 
 #menu a.current { 
-    background-color: lightblue;
-    color: black;
+    background-color: white;
+    color: darkblue;
 }
 
 #hamburger:focus + #menu { 
