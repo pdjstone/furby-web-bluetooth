@@ -152,7 +152,7 @@ function showSection(section) {
 }
 
 async function loadDLCIndex() {
-    let resp = await fetch('dlc/index.json');
+    let resp = await fetch('dlc/index.js');
     let data = await resp.json();
 
     for (let dlc of data) {
