@@ -192,11 +192,8 @@ function setupDLCButtons(dlcParams) {
 function log2clipboard() {
     let range = document.createRange();
     range.selectNode(out);
-    let sel = window.getSelection();
-    sel.collapse();
-    sel.addRange(range);
+    window.getSelection().addRange(range);
     document.execCommand('copy');
-
     msg.ok('Copied to clipboard');
 }
 

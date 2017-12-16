@@ -37,7 +37,7 @@ body *  { user-select: none }
 }
 
 button#hamburger { 
-    background-color: var(--bg-primary);
+    background-color: transparent;
     border: none;
     font-size: 25pt;
     padding: .3em .8em;
@@ -54,12 +54,13 @@ body.keyboard #console { display: none }
 #console.expanded .clip { display: inline-block }
 
 h1 { font-size: 15pt; margin: 0 0 0.3em 0}
-progress { width: 100%; display:none}
+progress { width: 100%; display:none }
 
 .header  { color: white; 
     background-color: var(--bg-primary); 
     margin:-.5em -.5em 1em -.5em; 
-    padding: .5em
+    height: 3.5em;
+    padding: .5em;
 }
 .header button { float: right; width: 30%; float: top; height: 3em }
 #status { 
