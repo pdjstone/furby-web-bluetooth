@@ -71,11 +71,20 @@
     <section id='dlc'>
         <h2>DLC Files</h2>
         <div class='row'>
-            <select id='dlcname'>
-            </select>
+            <select id='dlcname'></select>
             <button onclick='dlcUploadClicked()'>Upload</button>
         </div>
         <progress id='dlcprogress'></progress>
+    </section>
+
+    <section id='sensors'>
+        <!--<h2>Sensors</h2>
+        <div class='row'>
+                <button onclick='sendGPCmd([0x20, 0x0d])'>Start continuous</button>
+                <button onclick='sendGPCmd([0x20, 0x0e])'>Stop continuous</button>
+        </div>
+        <h2>State</h2>-->
+        <ul id='sensor-state'></ul>
     </section>
 
 </div>

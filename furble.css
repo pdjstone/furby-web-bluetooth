@@ -4,7 +4,8 @@
     --bg-primary: rgb(243, 0, 170);
 }
 
-body { font-family: sans}
+body { font-family: sans }
+#sensors li { font-size: 20pt }
 button, input, select { font-size: 14pt }
 input[type=number] { font-size: 20pt }
 .row { display: flex; margin: .6em 0; align-items: center }
