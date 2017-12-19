@@ -4,7 +4,8 @@
     --bg-primary: rgb(243, 0, 170);
 }
 
-body { font-family: sans}
+body { font-family: sans }
+#sensors li { font-size: 20pt }
 button, input, select { font-size: 14pt }
 input[type=number] { font-size: 20pt }
 .row { display: flex; margin: .6em 0; align-items: center }
@@ -37,7 +38,7 @@ body *  { user-select: none }
 }
 
 button#hamburger { 
-    background-color: var(--bg-primary);
+    background-color: transparent;
     border: none;
     font-size: 25pt;
     padding: .3em .8em;
@@ -54,12 +55,13 @@ body.keyboard #console { display: none }
 #console.expanded .clip { display: inline-block }
 
 h1 { font-size: 15pt; margin: 0 0 0.3em 0}
-progress { width: 100%; display:none}
+progress { width: 100%; display:none }
 
 .header  { color: white; 
     background-color: var(--bg-primary); 
     margin:-.5em -.5em 1em -.5em; 
-    padding: .5em
+    height: 3.5em;
+    padding: .5em;
 }
 .header button { float: right; width: 30%; float: top; height: 3em }
 #status { 
@@ -109,7 +111,7 @@ progress { width: 100%; display:none}
 
 #hamburger:focus + #menu { 
     transform: translateX(0);
-    box-shadow: 5px 0px 5px rgba(0,0,0,0.4);
+    box-shadow: 5px 0px 5px rgba(0,0,0,0.3);
 }
 #menu ul { padding: 0 }
 #menu li { list-style: none; padding: 0; margin: 0}

@@ -35,7 +35,7 @@
 <div id='furby-buttons'>
 
     <section id='misc'>
-        <h2>Misc buttons</h2>
+        <h2>Antenna Colour</h2>
         <div class='row'>
             <button onclick='setAntennaColor(255, 0,0)'>Red</button>
             <button onclick='setAntennaColor(0, 255,0)'>Green</button>
@@ -69,19 +69,27 @@
     </section>
 
     <section id='dlc'>
-        DLC Files
+        <h2>DLC Files</h2>
         <div class='row'>
-            <select id='dlcname'>
-            </select>
+            <select id='dlcname'></select>
             <button onclick='dlcUploadClicked()'>Upload</button>
         </div>
         <progress id='dlcprogress'></progress>
     </section>
 
-    <section id='no-web-bluetooth'>
-        <h3>Sorry, this browser doesn't seem to support Web Bluetooth. Works best with Chrome for Android.</h3>
+    <section id='sensors'>
+        <h2>Sensors</h2>
+        <!--<div class='row'>
+                <button onclick='sendGPCmd([0x20, 0x0d])'>Start continuous</button>
+                <button onclick='sendGPCmd([0x20, 0x0e])'>Stop continuous</button>
+        </div>
+        <h2>State</h2>-->
+        <ul id='sensor-state'><li>Waiting for connection...</li></ul>
     </section>
 
+    <section id='no-web-bluetooth'>
+        <h3>Sorry, this browser doesn't seem to support Web Bluetooth. Works best with Chrome for Android.</h3>
+    </section>s
 </div>
 
 
@@ -198,11 +206,8 @@ function setupDLCButtons(dlcParams) {
 function log2clipboard() {
     let range = document.createRange();
     range.selectNode(out);
-    let sel = window.getSelection();
-    sel.collapse();
-    sel.addRange(range);
+    window.getSelection().addRange(range);
     document.execCommand('copy');
-
     msg.ok('Copied to clipboard');
 }
 

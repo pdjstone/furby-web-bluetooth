@@ -547,6 +547,70 @@ async function checkActiveSlot() {
     }
 }
 
+function onFurbySensorData(buf) {
+    let state = decodeFurbyState(buf);
+    console.log(state);
+    let ul = document.getElementById('sensor-state');
+    //ul.outerHTML = '<ul></ul>';
+    while (ul.firstChild) {
+        ul.removeChild(ul.firstChild);
+    }
+
+    for (k in state) {
+        let v = state[k];
+        let li = document.createElement('li');
+        li.textContent = `${k}: ${v}`;
+        ul.appendChild(li);
+    }
+}
+
+function decodeFurbyState(buf) {
+    let antenna = '';
+    if (buf.getUint8(1) & 2)
+        antenna = 'left';
+    if (buf.getUint8(1) & 1)
+        antenna = 'right';
+    if (buf.getUint8(2) == 0xc0) // fwd | back
+        antenna = 'down';
+    else if (buf.getUint8(2) & 0x40)
+        antenna = 'forward';
+    else if (buf.getUint8(2) & 0x80)
+        antenna = 'back';
+
+    let orientation = '';
+    if (buf.getUint8(4) & 1) 
+        orientation = 'upright';
+    else if (buf.getUint8(4) & 2) 
+        orientation = 'upside-down';   
+    else if (buf.getUint8(4) & 4) 
+        orientation = 'lying on right side';   
+    else if (buf.getUint8(4) & 8) 
+        orientation = 'lying on left side';      
+    else if (buf.getUint8(4) & 0x20) 
+        orientation = 'leaning back';
+    else if (buf.getUint8(4) & 0x40) 
+        orientation = 'tilted right'; 
+    else if (buf.getUint8(4) & 0x80) 
+        orientation = 'tilted left';    
+    var state = {};
+    state['antenna'] = antenna;
+    state['orientation'] = orientation;
+
+    if (buf.getUint8(2) & 1)
+        state.tickle_head_back = true;
+    if (buf.getUint8(2) & 2)
+        state.tickle_tummy = true;
+    if (buf.getUint8(2) & 4)
+        state.tickle_right_side = true;
+    if (buf.getUint8(2) & 8)
+        state.tickle_left_side = true;
+    if (buf.getUint8(2) & 0x10)
+        state.pull_tail = true;
+    if (buf.getUint8(2) & 0x20)
+        state.push_tongue = true;
+    return state;
+}
+
 async function doConnect() {
     log('Requesting Bluetooth Devices with Furby name...');
     var server;
@@ -594,9 +658,10 @@ async function doConnect() {
     }
   
     //await triggerAction(39,4,2,0); // 'get ready'
-
+    gp_listen_callbacks = [];
     startKeepAlive();
     onConnected();
+    addGPListenCallback([0x21], onFurbySensorData);
     await checkActiveSlot();
 
     await setAntennaColor(255,0,0);
@@ -605,4 +670,6 @@ async function doConnect() {
     await sleep(600);
     await setAntennaColor(0,0,255);
     await sleep(600);
+
+
 }
