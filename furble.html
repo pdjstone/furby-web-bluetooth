@@ -78,6 +78,10 @@
         <progress id='dlcprogress'></progress>
     </section>
 
+    <section id='no-web-bluetooth'>
+        <h3>Sorry, this browser doesn't seem to support Web Bluetooth. Works best with Chrome for Android.</h3>
+    </section>
+
 </div>
 
 
@@ -130,6 +134,8 @@ var msg = {
 function updateCurrentSection() {
     let current = location.hash.substr(1);
     if (current == '') current = 'dlc';
+    if ('bluetooth' in navigator === false) 
+        current = 'no-web-bluetooth';
     showSection(current);
 }
 
