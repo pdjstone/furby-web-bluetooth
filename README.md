@@ -14,6 +14,7 @@ Use Web Bluetooth to control your Furby Connect. Tested with Chrome for Android.
 - Customisable action buttons
 - UI for managing DLC slots
 - Test if this works on iOS with [WebBLE](https://itunes.apple.com/us/app/webble/id1193531073?mt=8)
+- Visualise Furby orientation 
 
 Pull requests are welcome!
 
@@ -53,6 +54,9 @@ I used the following setup to develop/debug this:
 - Use Chrome's [remote debugging](https://developers.google.com/web/tools/chrome-devtools/remote-debugging/) feature to forward port 8000 to your Android phone
 - Load localhost:8000 in Chrome on your phone
 - Use the remote Javascript console in desktop Chrome to debug
+
+## Thanks
+Thanks to [Jeija](https://github.com/Jeija) for his work documenting the Furby Bluetooth protocol, and to [@L0C4RD](https://twitter.com/L0C4RD) for his help dissecting the DLC format. Also thanks to my work colleagues and to my wife whose patience has been pushed to the limit by noisy, farting Furbies that won't shut the *#$& up while I've been trying to debug my code.
 
 ## Further Reading
 - Reverse Engineering the Furby Connect: https://www.contextis.com/blog/dont-feed-them-after-midnight-reverse-engineering-the-furby-connect
