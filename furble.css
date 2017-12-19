@@ -19,11 +19,12 @@ body *  { user-select: none }
     left:0;
     right: 0;
     padding: 0.5em;
+    padding-top: 0;
     user-select: all;
 }
 
-#console > h2::before { content: '+'; display: inline-block; margin: 0 .5em; width: 1em }
-#console.expanded > h2::before { content: '—' }
+#console > h3::before { content: '+'; display: inline-block; margin: 0 .5em; padding: 0; width: 1em }
+#console.expanded > h3::before { content: '—' }
 
 #out {
     overflow-y: scroll; 

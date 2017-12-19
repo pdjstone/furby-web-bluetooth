@@ -324,7 +324,9 @@ async function fetchAndUploadDLC(dlcurl) {
         let activeSlot = slots.indexOf(SLOT_ACTIVE);
         if (filledSlot == -1)
             throw new Error('Upload failed - no slots filled');
-        
+        else {
+            log('DLC was uploaded to slot ' + filledSlot);
+        }
         if (activeSlot != -1) {
             log('deactivating old DLC in slot ' + activeSlot);
             await deactivateDLC(activeSlot)
