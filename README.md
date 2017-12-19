@@ -14,33 +14,34 @@ Use Web Bluetooth to control your Furby Connect. Tested with Chrome for Android.
 - Customisable action buttons
 - UI for managing DLC slots
 - Test if this works on iOS with [WebBLE](https://itunes.apple.com/us/app/webble/id1193531073?mt=8)
+
 Pull requests are welcome!
 
 ## FAQ
 
 #### How do I make Furby say different things?
-Take a look at the [action list](https://github.com/Jeija/bluefluff/blob/master/doc/actions.md#list). Look up the four numbers for a particular action and put them in the 'action sequences' section of FurBLE.
+Take a look at the built-in [action list](https://github.com/Jeija/bluefluff/blob/master/doc/actions.md#list). Look up the four numbers for a particular action and put them in the 'action sequences' section of FurBLE.
 
 #### I've successfully uploaded a DLC file, but the sounds/graphics seem corrupted
-Try doing the pull tail/push tongue reset described below before uploading a new DLC file
+Try doing the "pull tail/push tongue" reset described below before uploading a new DLC file.
 
 #### Furby keeps disconnecting / going to sleep
-The batteries may be low, try replacing them.
+The batteries may be low, try replacing them. Furby eats through batteries fairly rapidly. If you're spending extended period with FurBLE connected to a Furby, turn off the eyes (using the button in the Debug section) to save battery.
 
-#### Can I create my own DLC with custom animations/sounds
-Yes, though it's not straightforward currently. Take a look at the links in 'Further Reading' for more information.
+#### Can I create my own DLC with custom animations/sounds?
+Yes, though it's not straightforward currently. Take a look at the ```demo.py``` script in our [Furby Python tools](https://github.com/ctxis/furby) repo for an example of how to do this. 
 
 ## Troubleshooting tips
 Web Bluetooth in Chrome for Android can be a bit buggy occasionally. If the Furby doesn't show up in the list when you try to connect, try quitting Chrome, then disable and re-enable bluetooth on your phone.
 
 Make sure the batteries in your Furby aren't running low. This can cause the Furby to misbehave in odds ways, including going to sleep unexpectedly.
 
-If your Furby appears to be rejecting connections, try switching it off and on again. Do this by pushing the antenna down for ~5 seconds until the Furby goes to sleep, then waking it up again. Note that putting on the sleep mask seems to put the Furby into standby without actually restarting the CPU.
+If your Furby appears to be rejecting connections, try switching it off and on again. Do this by pushing the antenna down for ~5 seconds until the Furby goes to sleep, then waking it up again. Note that attaching the sleep mask seems to put the Furby into standby without actually restarting the CPU.
 
 You can fully reset the Furby (and clear the DLC storage area) by following these steps:
 1. Wake Furby up
 2. Hold Furby upside down
-3. Push down Furby's tongue
+3. Hold down Furby's tongue
 4. Pull Furby's tail until the eyes go dark (~10 seconds)
 5. You should hear a couple of quiet pops from the speaker as it resets
 
