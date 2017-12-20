@@ -7,7 +7,7 @@
         ]
     },
     { 
-        "file": "hacked2.dlc", 
+        "file": "hacked_flash.dlc", 
         "title": "HACKED",
         "buttons": [
             { "title": "Hacked 1", "action": [75,0,3,4] },
