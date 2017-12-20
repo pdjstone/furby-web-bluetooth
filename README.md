@@ -1,9 +1,9 @@
 # FurBLE - Furby Web Bluetooth Demo
-Use Web Bluetooth to control your Furby Connect. Tested with Chrome for Android.
+Use Web Bluetooth to control your Furby Connect! Tested with Chrome for Android.
 
-## [Live Demo](https://pdjstone.github.io/furby-web-bluetooth/furble.html) 
+## [Try it out](https://pdjstone.github.io/furby-web-bluetooth/furble.html)  
 
-![Connecting to Furby with FurBLE](images/furby1.jpg)
+<img src="images/furby1.jpg" width="500">
 
 ### Working:
 - Connect to / disconnect from Furby
@@ -22,6 +22,12 @@ Pull requests are welcome!
 
 ## FAQ
 
+#### Why did you make this?
+I wanted to build on the excellent [bluefluff](https://github.com/Jeija/bluefluff) project and make something really easy to use - just visit the [demo page](https://pdjstone.github.io/furby-web-bluetooth/furble.html) with your Android phone and connect to your Furby.
+
+#### Does it work with Chrome for Linux/Windows/Mac or other browsers?
+Web Bluetooth is a Chrome-only thing at the moment. Mac is apparently supported, but I've not tested it. It should also work on most Chromebooks. See the Web Bluetooth [implementation status](https://github.com/WebBluetoothCG/web-bluetooth/blob/master/implementation-status.md) page.
+ 
 #### How do I make Furby say different things?
 Take a look at the built-in [action list](https://github.com/Jeija/bluefluff/blob/master/doc/actions.md#list). Look up the four numbers for a particular action and put them in the 'action sequences' section of FurBLE.
 
