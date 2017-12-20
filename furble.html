@@ -173,8 +173,10 @@ async function loadDLCIndex() {
 
     for (let dlc of data) {
         let opt = document.createElement('option');
-        if (dlc.file.length > 12) 
-            throw new Error('DLC filename must be <= 12 chars, got ' + dlc.file);
+        if (dlc.file.length > 12) {
+            log('DLC filename must be <= 12 chars, got ' + dlc.file);
+        }
+            
         dlcdata[dlc.file] = dlc;
         opt.value = dlc.file;
         opt.textContent = dlc.title;
