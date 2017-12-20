@@ -3,7 +3,7 @@ Use Web Bluetooth to control your Furby Connect. Tested with Chrome for Android.
 
 ## [Live Demo](https://pdjstone.github.io/furby-web-bluetooth/furble.html) 
 
-![Connecting to Furby with FurBLE](images/furby1.jpg)
+<img src="images/furby1.jpg" width="500">
 
 ### Working:
 - Connect to / disconnect from Furby
