@@ -1,7 +1,7 @@
 # FurBLE - Furby Web Bluetooth Demo
 Use Web Bluetooth to control your Furby Connect! Tested with Chrome for Android.
 
-## [Try it out](https://pdjstone.github.io/furby-web-bluetooth/furble.html)  
+## [Try it out](https://pdjstone.github.io/furby-web-bluetooth/furble.html)  or read [our blog](https://www.contextis.com/blog/dont-feed-them-after-midnight-reverse-engineering-the-furby-connect)
 
 <img src="images/furby1.jpg" width="500">
 
@@ -38,7 +38,7 @@ Try doing the "pull tail/push tongue" reset described below before uploading a n
 The batteries may be low, try replacing them. Furby eats through batteries fairly rapidly. If you're spending extended period with FurBLE connected to a Furby, turn off the eyes (using the button in the Debug section) to save battery.
 
 #### Can I create my own DLC with custom animations/sounds?
-Yes, though it's not straightforward currently. Take a look at the ```demo.py``` script in our [Furby Python tools](https://github.com/ctxis/furby) repo for an example of how to do this. 
+Yes, though it's not straightforward currently. Make sure you read about the [DLC format](https://www.contextis.com/blog/dont-feed-them-after-midnight-reverse-engineering-the-furby-connect) and take a look at the ```demo.py``` script in our [Furby Python tools](https://github.com/ctxis/furby) repo for an example of how to do this. 
 
 ## Troubleshooting tips
 Web Bluetooth in Chrome for Android can be a bit buggy occasionally. If the Furby doesn't show up in the list when you try to connect, try quitting Chrome, then disable and re-enable bluetooth on your phone.
