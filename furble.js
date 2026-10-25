@@ -280,8 +280,14 @@ async function fetchAndUploadDLC(dlcurl) {
     }
 
     let buf = await response.arrayBuffer();
+    log('Fetched DLC from server:', dlcurl);
+    await uploadAndActivateDLC(buf, makeDLCFilename(dlcurl));
+}
+
+// Upload a DLC (an ArrayBuffer) under an 8.3 name like __HACKED.DLC, check its checksum and activate it
+async function uploadAndActivateDLC(buf, name) {
     let chksumOriginal = adler32(buf);
-    log('Fetched DLC from server:', dlcurl, ' checksum 0x' + chksumOriginal.toString(16));
+    log('Uploading ' + name + ', checksum 0x' + chksumOriginal.toString(16));
     var progress = document.getElementById('dlcprogress');
     progress.max = buf.byteLength;
 
@@ -293,7 +299,6 @@ async function fetchAndUploadDLC(dlcurl) {
         //await deleteAllDLCSlots();
         await enableEyes(false); // eyes off, save battery
         await setAntennaColor(0,0,0);
-        let name = makeDLCFilename(dlcurl);
         let started = false;
         await uploadDLC(buf, name, (current, total, maxRx) => {
             if (c % 100 == 0) 

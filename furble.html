@@ -76,6 +76,10 @@
             <select id='dlcname'></select>
             <button onclick='dlcUploadClicked()'>Upload</button>
         </div>
+        <div class='row'>
+            <input type='file' id='customdlc' accept='.dlc'>
+            <button onclick='customDlcUploadClicked()'>Upload Custom</button>
+        </div>
         <progress id='dlcprogress'></progress>
     </section>
 
@@ -193,9 +197,25 @@ async function dlcUploadClicked() {
     showSection('actions');
 }
 
+async function customDlcUploadClicked() {
+    let file = document.getElementById('customdlc').files[0];
+    if (!file) {
+        msg.error('Choose a .dlc file first');
+        return;
+    }
+    // The Furby only stores 8.3 names, so send the same form the bundled DLCs use (e.g. __HACKED.DLC)
+    let base = file.name.replace(/\.dlc$/i, '').replace(/[^A-Za-z0-9]/g, '').substring(0, 8) || 'CUSTOM';
+    let name = makeDLCFilename(base + '.dlc');
+    await uploadAndActivateDLC(await file.arrayBuffer(), name);
+    // A custom DLC has no known actions, so drop the previous DLC's buttons
+    setupDLCButtons({file: name, buttons: []});
+    showSection('actions');
+}
+
 function setupDLCButtons(dlcParams) {
     let container = document.getElementById('dlc-actions');
-    container.childNodes.forEach(el => el.parentNode.removeChild(el));
+    // Removing from childNodes while iterating it skipped every other button
+    container.replaceChildren();
     dlcParams.buttons.forEach(p => {
         let button = document.createElement('button');
         button.textContent = p.title;
