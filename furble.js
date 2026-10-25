@@ -25,6 +25,8 @@ const SLOT_UPLOADING = 1;
 const SLOT_FILLED = 2;
 const SLOT_ACTIVE = 3;
 
+const INITIAL_RETRY_DELAY_MS = 1000;
+
 function flipDict(d) {
     let flipped = {};
     for (let k in d) {
@@ -535,6 +537,27 @@ function sleep(t) {
     return new Promise(resolve  => setTimeout(resolve, t));
 }
 
+async function connectWithRetry(device, maxRetries = 3) {
+    let lastError;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            log(`Connection attempt ${attempt} of ${maxRetries}...`);
+            const server = await device.gatt.connect();
+            log('Successfully connected to GATT Server');
+            return server;
+        } catch (e) {
+            lastError = e;
+            log(`Connection attempt ${attempt} failed: ${e.message}`);
+            if (attempt < maxRetries) {
+                const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+                log(`Retrying in ${delay}ms...`);
+                await sleep(delay);
+            }
+        }
+    }
+    throw lastError;
+}
+
 async function checkActiveSlot() {
     let activeSlot = await getActiveSlotInfo();
     if (activeSlot) {
@@ -622,10 +645,19 @@ async function doConnect() {
             optionalServices: ['generic_access', 'device_information', fluff_service]});
         device.addEventListener('gattserverdisconnected', onDisconnected);
         log('Connecting to GATT Server...');
-        server = await device.gatt.connect();
+        server = await connectWithRetry(device, 3);
     } catch (e) {
-        msg.error('Failed to connect');
-        log(e.message);
+        if (e.name === 'NotFoundError') {
+            // Also raised when the chooser is cancelled or Bluetooth is off
+            msg.error('No Furby selected, or Bluetooth is off. Make sure Furby is awake and nearby, then try again.');
+            log('NotFoundError: ' + e.message);
+        } else if (e.name === 'SecurityError') {
+            msg.error('Bluetooth access denied. Please grant permission.');
+            log('SecurityError: ' + e.message);
+        } else {
+            msg.error('Failed to connect: ' + e.name);
+            log('Connection error: ' + e.message);
+        }
         return;
     }
 
@@ -654,8 +686,13 @@ async function doConnect() {
         furby_chars.NordicListen.addEventListener('characteristicvaluechanged', handleNordicNotification);
         await furby_chars.NordicListen.startNotifications();
     } catch (e) {
-        msg.error('Failed initialise BLE services');
-        log(e.message);
+        msg.error('Failed to initialize BLE services');
+        log(e.name + ': ' + e.message);
+        // Disconnect so the next attempt starts clean, without onDisconnected replacing the error above
+        if (device && device.gatt.connected) {
+            device.removeEventListener('gattserverdisconnected', onDisconnected);
+            device.gatt.disconnect();
+        }
         return;
     }
   
