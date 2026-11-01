@@ -1,5 +1,12 @@
 [
     {
+        "file": "testeyes.dlc",
+        "title": "Orange eyes test",
+        "buttons": [
+            { "title": "orange eyes", "action": [75,0,0,0] }
+        ]
+    },
+    {
         "file": "eyestick.dlc",
         "title": "Stick full x2",
         "buttons": [
