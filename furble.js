@@ -309,7 +309,7 @@ async function fetchAndUploadDLC(dlcurl) {
         });
         msg.ok('DLC uploaded!');
     } catch (e) {
-        msg.error('DLC upload failed :(');
+        msg.error('DLC upload failed :( ' + e.message);
         log(e.message);
         console.error(e);
         await setAntennaColor(255,0,0);
@@ -344,7 +344,7 @@ async function fetchAndUploadDLC(dlcurl) {
         msg.ok('DLC activated!');
         await setAntennaColor(0,255,0);
     } catch (e) {
-        msg.error('DLC activation failed :(');
+        msg.error('DLC activation failed :( ' + e.message);
         log(e.message);
         console.log(e);
         await setAntennaColor(255,0,0);
