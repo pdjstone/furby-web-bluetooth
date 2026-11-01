@@ -1,9 +1,9 @@
 [
     { 
-        "file": "furby67.dlc", 
-        "title": "rickroll",
+    { "file": "furby67.dlc",
+        "title": "Furby 67",
         "buttons": [
-            { "title": "rickroll", "action": [75,0,1,4] }
+            { "title": "furby67", "action": [75,0,0,0] }
         ]
     },
     { 
