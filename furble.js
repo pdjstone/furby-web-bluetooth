@@ -289,8 +289,9 @@ async function fetchAndUploadDLC(dlcurl) {
         progress.style.display = 'block';
         progress.removeAttribute('value');
         let c = 0;
-        //log('Clearing all DLC slots...');
-        //await deleteAllDLCSlots();
+        log('Clearing all DLC slots...');
+        msg.ok('Clearing old DLCs off the Furby...');
+        await deleteAllDLCSlots();
         await enableEyes(false); // eyes off, save battery
         await setAntennaColor(0,0,0);
         let name = makeDLCFilename(dlcurl);

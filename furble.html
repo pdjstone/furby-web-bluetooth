@@ -184,13 +184,23 @@ async function loadDLCIndex() {
     }
 }
 
+let dlcUploading = false;
 async function dlcUploadClicked() {
-    let dlcfile = dlcsel.options[dlcsel.selectedIndex].value;
-    let params = dlcdata[dlcfile];
-    console.log('DLC upload clicked', params);
-    await fetchAndUploadDLC('dlc/'+dlcfile);
-    setupDLCButtons(params);
-    showSection('actions');
+    if (dlcUploading) {
+        console.log('Upload already running, ignoring extra press');
+        return;
+    }
+    dlcUploading = true;
+    try {
+        let dlcfile = dlcsel.options[dlcsel.selectedIndex].value;
+        let params = dlcdata[dlcfile];
+        console.log('DLC upload clicked', params);
+        await fetchAndUploadDLC('dlc/'+dlcfile);
+        setupDLCButtons(params);
+        showSection('actions');
+    } finally {
+        dlcUploading = false;
+    }
 }
 
 function setupDLCButtons(dlcParams) {
