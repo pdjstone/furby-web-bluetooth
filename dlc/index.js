@@ -1,9 +1,9 @@
 [
     {
-        "file": "furby67.dlc",
-        "title": "Furby 67",
+        "file": "eyestick.dlc",
+        "title": "Stick full x2",
         "buttons": [
-            { "title": "furby67", "action": [75,0,0,0] }
+            { "title": "stick full", "action": [75,0,0,0] }
         ]
     },
     {
@@ -11,6 +11,13 @@
         "title": "Stick fly",
         "buttons": [
             { "title": "stick", "action": [75,0,0,0] }
+        ]
+    },
+    {
+        "file": "furby67.dlc",
+        "title": "Furby 67",
+        "buttons": [
+            { "title": "furby67", "action": [75,0,0,0] }
         ]
     },
     {
