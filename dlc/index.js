@@ -1,5 +1,12 @@
 [
     {
+        "file": "oiiacat.dlc",
+        "title": "OIIA cat",
+        "buttons": [
+            { "title": "oiia cat", "action": [75,0,0,0] }
+        ]
+    },
+    {
         "file": "testeyes.dlc",
         "title": "Orange eyes (button only)",
         "buttons": [
