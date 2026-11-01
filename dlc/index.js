@@ -1,9 +1,17 @@
 [
     {
         "file": "testeyes.dlc",
-        "title": "Orange eyes test",
+        "title": "Orange eyes (button only)",
         "buttons": [
             { "title": "orange eyes", "action": [75,0,0,0] }
+        ]
+    },
+    {
+        "file": "f67v2.dlc",
+        "title": "Palette test (orange)",
+        "buttons": [
+            { "title": "test 1", "action": [75,0,0,0] },
+            { "title": "test 2", "action": [75,0,1,0] }
         ]
     },
     {
