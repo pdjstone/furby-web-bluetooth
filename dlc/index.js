@@ -1,5 +1,12 @@
 [
     {
+        "file": "catintro.dlc",
+        "title": "Cat intro (orange)",
+        "buttons": [
+            { "title": "cat intro", "action": [75,0,0,0] }
+        ]
+    },
+    {
         "file": "sean.dlc",
         "title": "Sean edit",
         "buttons": [
