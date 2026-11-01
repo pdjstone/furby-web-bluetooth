@@ -1,5 +1,12 @@
 [
     {
+        "file": "sean.dlc",
+        "title": "Sean edit",
+        "buttons": [
+            { "title": "sean", "action": [75,0,0,0] }
+        ]
+    },
+    {
         "file": "lapeace.dlc",
         "title": "La peace",
         "buttons": [
