@@ -1,5 +1,12 @@
 [
     {
+        "file": "pigeon.dlc",
+        "title": "Dancing pigeon",
+        "buttons": [
+            { "title": "pigeon", "action": [75,0,0,0] }
+        ]
+    },
+    {
         "file": "oiiacat.dlc",
         "title": "OIIA cat",
         "buttons": [
