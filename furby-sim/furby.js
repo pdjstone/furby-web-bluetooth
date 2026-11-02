@@ -359,7 +359,7 @@ class Furby {
   constructor(ui) {
     this.ui = ui;            // { leftCanvas, rightCanvas, onMove(kind, amount), onStatus(text), onBusy(bool) }
     this.voice = new Voice();
-    this.fur = [[46, 196, 182], [24, 120, 112], [140, 232, 220]];
+    this.fur = [[40, 120, 235], [20, 64, 170], [120, 185, 255]];   // eyelid colours: blue
     this.ctxL = ui.leftCanvas.getContext('2d'); this.ctxR = ui.rightCanvas.getContext('2d');
     this.imgL = this.ctxL.createImageData(128, 128); this.imgR = this.ctxR.createImageData(128, 128);
     this.bufL = new Uint32Array(this.imgL.data.buffer); this.bufR = new Uint32Array(this.imgR.data.buffer);
