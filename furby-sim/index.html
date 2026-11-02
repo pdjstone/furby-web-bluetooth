@@ -4,60 +4,66 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Furby Simulator</title>
-<meta name="theme-color" content="#1b1530">
+<meta name="theme-color" content="#14223a">
 <style>
   :root {
-    --bg: #1b1530; --panel: #2a2147; --text: #f4efff; --muted: #b9add9;
-    --accent: #ffb03b; --btn: #3a2f63; --btn-hi: #4c3f80;
-    --fur: #2ec4b6; --fur-dark: #18786f; --fur-light: #8ce8dc;
+    --bg: #14223a; --text: #eefaff; --muted: #a9c3d8;
+    --accent: #ffcf3b; --btn: #22395a; --btn-hi: #2e4c76; --line: #3b5f8c;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; }
+  html, body { margin: 0; min-height: 100%; }
   body {
-    background: radial-gradient(ellipse at 50% 30%, #2d2353 0%, var(--bg) 70%);
+    background: radial-gradient(ellipse at 50% 28%, #24426a 0%, var(--bg) 70%);
     color: var(--text); font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     display: flex; flex-direction: column; align-items: center;
     padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
     overflow-x: hidden; user-select: none; -webkit-user-select: none; touch-action: manipulation;
   }
   header { width: 100%; max-width: 440px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  h1 { font-size: 20px; margin: 0; letter-spacing: .3px; }
+  h1 { font-size: 20px; margin: 0; }
   select {
-    background: var(--btn); color: var(--text); border: 1px solid #5a4b93; border-radius: 10px;
-    padding: 8px 10px; font: inherit; min-height: 40px;
+    background: var(--btn); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 10px; font: inherit; min-height: 40px; max-width: 100%;
   }
-  #stage { position: relative; width: min(100%, 420px); aspect-ratio: 400 / 500; margin-top: 6px; }
-  #furby { position: absolute; inset: 0; transform-origin: 50% 60%; transition: transform .6s cubic-bezier(.3,1.4,.5,1); }
+  #stage { position: relative; width: min(100%, 400px); aspect-ratio: 400 / 500; margin-top: 4px; }
+  #furby { position: absolute; inset: 0; transform-origin: 50% 58%; transition: transform .6s cubic-bezier(.3,1.4,.5,1); }
   #furby.upside { transform: rotate(180deg); }
   #furby.shaking { animation: shake .12s linear infinite; }
   @keyframes shake { 0%{translate:-6px 0} 50%{translate:6px 2px} 100%{translate:-6px 0} }
+  #bob { position: absolute; inset: 0; transform-origin: 50% 94%; }
   svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-  .eye {
-    position: absolute; width: 25%; aspect-ratio: 1; border-radius: 50%;
-    image-rendering: auto; background: #fff; pointer-events: none;
-    box-shadow: 0 0 0 3px #0b0a14, 0 0 18px rgba(120,220,255,.25);
-  }
-  #eyeL { left: 23.25%; top: 34.4%; }
-  #eyeR { left: 51.75%; top: 34.4%; }
+  .eye { position: absolute; width: 20%; aspect-ratio: 1; border-radius: 50%; background: #fff; pointer-events: none; }
+  #eyeL { left: 26.25%; top: 38.4%; }
+  #eyeR { left: 53.75%; top: 38.4%; }
   .hit { fill: transparent; cursor: pointer; }
-  #status { min-height: 22px; color: var(--muted); font-size: 14px; text-align: center; margin-top: 2px; }
-  .controls { width: 100%; max-width: 440px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  #status { min-height: 22px; color: var(--muted); font-size: 14px; text-align: center; }
+  .controls { width: 100%; max-width: 440px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
   button {
-    background: var(--btn); color: var(--text); border: 1px solid #5a4b93; border-radius: 12px;
+    background: var(--btn); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
     font: 600 14px/1.1 inherit; padding: 10px 6px; min-height: 48px; cursor: pointer;
   }
   button:active { background: var(--btn-hi); transform: scale(.97); }
-  button.mask { grid-column: span 3; background: #5b3c9e; }
-  button.mask.on { background: var(--accent); color: #2a1a00; border-color: #ffd28a; }
+  button.wide { grid-column: span 3; }
+  button.mask { background: #4b3a9a; }
+  button.mask.on { background: var(--accent); color: #2a1a00; border-color: #ffe28a; }
+  .panel { width: 100%; max-width: 440px; margin-top: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(20,40,70,.5); }
+  .panel h2 { font-size: 15px; margin: 0 0 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .row select { flex: 1 1 180px; }
+  label.file { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 12px; border-radius: 10px; background: var(--btn); border: 1px solid var(--line); font-weight: 600; cursor: pointer; }
+  label.file input { display: none; }
+  #dlcButtons { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-top: 10px; }
+  #dlcButtons button { background: #6a3f9e; border-color: #8a5fc0; }
+  #dlcInfo { color: var(--muted); font-size: 13px; margin-top: 6px; min-height: 18px; }
   .hint { color: var(--muted); font-size: 13px; text-align: center; margin: 10px 0 0; max-width: 440px; }
   #start {
-    position: fixed; inset: 0; background: rgba(15,10,30,.82); display: flex; flex-direction: column;
+    position: fixed; inset: 0; background: rgba(8,16,30,.82); display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 14px; z-index: 10; padding: 16px; text-align: center;
   }
   #start button { background: var(--accent); color: #2a1a00; font-size: 18px; padding: 14px 26px; border: 0; }
   #start p { color: var(--muted); max-width: 320px; margin: 0; }
-  .credit { color: #7e73a3; font-size: 11px; text-align: center; margin-top: 14px; max-width: 440px; }
-  .credit a { color: #a99bd6; }
+  .credit { color: #6f8aa6; font-size: 11px; text-align: center; margin-top: 14px; max-width: 440px; }
+  .credit a { color: #9bc0e0; }
   #ripple { position: absolute; width: 60px; height: 60px; margin: -30px; border-radius: 50%; border: 3px solid #fff; opacity: 0; pointer-events: none; }
   #ripple.go { animation: ripple .45s ease-out; }
   @keyframes ripple { from { opacity: .8; transform: scale(.3); } to { opacity: 0; transform: scale(1.4); } }
@@ -74,77 +80,92 @@
 </header>
 
 <div id="stage">
-  <div id="furby"><div id="bob" style="position:absolute;inset:0;transform-origin:50% 94%">
+  <div id="furby"><div id="bob">
     <svg viewBox="0 0 400 500" aria-label="Furby">
       <defs>
         <filter id="fluff" x="-10%" y="-10%" width="120%" height="120%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="3" result="n"/>
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G"/>
+          <feTurbulence type="fractalNoise" baseFrequency="0.11" numOctaves="2" seed="5" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G"/>
         </filter>
-        <radialGradient id="furG" cx="45%" cy="35%" r="70%">
-          <stop offset="0%" stop-color="var(--fur-light)"/><stop offset="55%" stop-color="var(--fur)"/><stop offset="100%" stop-color="var(--fur-dark)"/>
+        <filter id="furTex">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9 0.25" numOctaves="2" seed="2" result="t"/>
+          <feColorMatrix in="t" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .22 0" result="a"/>
+          <feComposite in="a" in2="SourceGraphic" operator="in" result="tex"/>
+          <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="tex"/></feMerge>
+        </filter>
+        <radialGradient id="furG" cx="46%" cy="34%" r="72%">
+          <stop offset="0%" stop-color="#3fd3dc"/><stop offset="50%" stop-color="#14a9b5"/><stop offset="100%" stop-color="#0a6f7c"/>
         </radialGradient>
-        <radialGradient id="bellyG" cx="50%" cy="40%" r="65%">
-          <stop offset="0%" stop-color="#fff6fb"/><stop offset="100%" stop-color="#f3c6e0"/>
+        <linearGradient id="earOut" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#7ff3ff"/><stop offset="45%" stop-color="#18b8cc"/><stop offset="100%" stop-color="#0a5f78"/>
+        </linearGradient>
+        <linearGradient id="earIn" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#bff3fa"/>
+        </linearGradient>
+        <radialGradient id="ring" cx="40%" cy="35%" r="70%">
+          <stop offset="0%" stop-color="#e6fdff"/><stop offset="70%" stop-color="#8fe9f2"/><stop offset="100%" stop-color="#3fb6c6"/>
         </radialGradient>
         <linearGradient id="beakG" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#ffc35a"/><stop offset="100%" stop-color="#f08a1c"/>
+          <stop offset="0%" stop-color="#ffe14d"/><stop offset="100%" stop-color="#f2b705"/>
         </linearGradient>
-        <radialGradient id="glow"><stop offset="0%" stop-color="#fff"/><stop offset="60%" stop-color="var(--ant, #7af)"/><stop offset="100%" stop-color="var(--ant, #7af)" stop-opacity="0"/></radialGradient>
+        <radialGradient id="ball"><stop offset="0%" stop-color="#fff"/><stop offset="55%" stop-color="var(--ant, #ffe45c)"/><stop offset="100%" stop-color="var(--ant, #ffe45c)" stop-opacity="0"/></radialGradient>
       </defs>
 
-      <g id="bodyG">
-        <!-- tail -->
-        <g id="tail"><path d="M318 430 q55 -10 62 -60 q8 40 -30 78 z" fill="url(#furG)" filter="url(#fluff)"/></g>
-        <!-- ears -->
-        <g id="earL" style="transform-origin:140px 150px">
-          <path d="M150 150 C120 90 70 40 40 10 C60 70 80 130 110 175 z" fill="url(#furG)" filter="url(#fluff)"/>
-          <path d="M135 150 C110 105 80 70 58 42 C72 90 90 130 112 160 z" fill="#f7b6d2"/>
-        </g>
-        <g id="earR" style="transform-origin:260px 150px">
-          <path d="M250 150 C280 90 330 40 360 10 C340 70 320 130 290 175 z" fill="url(#furG)" filter="url(#fluff)"/>
-          <path d="M265 150 C290 105 320 70 342 42 C328 90 310 130 288 160 z" fill="#f7b6d2"/>
-        </g>
-        <!-- body -->
-        <ellipse cx="200" cy="300" rx="158" ry="178" fill="url(#furG)" filter="url(#fluff)"/>
-        <!-- antenna light -->
-        <ellipse id="antGlow" cx="200" cy="112" rx="42" ry="22" fill="url(#glow)" opacity=".7"/>
-        <rect x="184" y="98" width="32" height="26" rx="13" fill="#e8f4ff" stroke="#9fb6d6" stroke-width="2"/>
-        <rect id="antLight" x="188" y="102" width="24" height="18" rx="9" fill="var(--ant, #7af)"/>
-        <!-- belly -->
-        <ellipse cx="200" cy="395" rx="92" ry="78" fill="url(#bellyG)" filter="url(#fluff)"/>
-        <!-- eye visor -->
-        <rect x="80" y="155" width="240" height="134" rx="67" fill="#120f22" stroke="#2b2546" stroke-width="5"/>
-        <!-- beak -->
-        <g id="beak">
-          <path id="beakLow" d="M178 300 Q200 336 222 300 z" fill="#e0760f"/>
-          <path d="M170 286 Q200 268 230 286 Q214 312 200 314 Q186 312 170 286 z" fill="url(#beakG)" stroke="#c96a12" stroke-width="2"/>
-        </g>
-        <!-- feet -->
-        <ellipse cx="140" cy="474" rx="46" ry="20" fill="url(#beakG)"/>
-        <ellipse cx="260" cy="474" rx="46" ry="20" fill="url(#beakG)"/>
+      <!-- ears (glossy plastic) -->
+      <g id="earL" style="transform-origin:150px 168px"><g transform="translate(150 168) scale(.86) translate(-150 -168)">
+        <path d="M150 168 C112 140 62 90 54 22 C52 4 70 0 84 12 C130 52 166 104 174 150 z" fill="url(#earOut)" stroke="#0a5a70" stroke-width="3"/>
+        <path d="M150 150 C118 124 80 82 72 34 C72 24 80 22 88 28 C128 64 152 106 160 140 z" fill="url(#earIn)"/>
+        <path d="M66 18 C100 46 130 84 154 128" fill="none" stroke="#ffffff" stroke-opacity=".6" stroke-width="4" stroke-linecap="round"/>
+      </g></g>
+      <g id="earR" style="transform-origin:250px 168px"><g transform="translate(250 168) scale(.86) translate(-250 -168)">
+        <path d="M250 168 C288 140 338 90 346 22 C348 4 330 0 316 12 C270 52 234 104 226 150 z" fill="url(#earOut)" stroke="#0a5a70" stroke-width="3"/>
+        <path d="M250 150 C282 124 320 82 328 34 C328 24 320 22 312 28 C272 64 248 106 240 140 z" fill="url(#earIn)"/>
+        <path d="M334 18 C300 46 270 84 246 128" fill="none" stroke="#ffffff" stroke-opacity=".6" stroke-width="4" stroke-linecap="round"/>
+      </g></g>
+      <!-- tail -->
+      <path d="M322 420 q50 -6 60 -52 q10 40 -28 76 z" fill="url(#furG)" filter="url(#fluff)"/>
+      <!-- antenna -->
+      <line x1="200" y1="128" x2="200" y2="66" stroke="#9fe8f0" stroke-width="5" stroke-linecap="round"/>
+      <circle id="antGlow" cx="200" cy="56" r="26" fill="url(#ball)" opacity=".8"/>
+      <circle cx="200" cy="56" r="11" fill="var(--ant, #ffe45c)" stroke="#fff6b0" stroke-width="2"/>
+      <!-- body -->
+      <g filter="url(#furTex)">
+        <ellipse cx="200" cy="300" rx="152" ry="180" fill="url(#furG)" filter="url(#fluff)"/>
+        <ellipse cx="200" cy="385" rx="88" ry="78" fill="#2cc3cd" opacity=".45" filter="url(#fluff)"/>
       </g>
+      <!-- forehead badge -->
+      <path d="M200 150 C214 162 222 172 222 182 C222 194 212 200 200 200 C188 200 178 194 178 182 C178 172 186 162 200 150 z" fill="#0d5d6e" stroke="#8fe9f2" stroke-width="4"/>
+      <!-- eye rings -->
+      <circle cx="145" cy="232" r="52" fill="url(#ring)" stroke="#2a9fb0" stroke-width="3"/>
+      <circle cx="255" cy="232" r="52" fill="url(#ring)" stroke="#2a9fb0" stroke-width="3"/>
+      <circle cx="145" cy="232" r="41" fill="#0b2433"/>
+      <circle cx="255" cy="232" r="41" fill="#0b2433"/>
+      <!-- beak -->
+      <path id="beakLow" d="M186 302 Q200 322 214 302 z" fill="#d9480f"/>
+      <path d="M180 292 Q200 276 220 292 Q212 308 200 310 Q188 308 180 292 z" fill="url(#beakG)" stroke="#c99300" stroke-width="2"/>
+      <!-- feet -->
+      <ellipse cx="148" cy="474" rx="40" ry="17" fill="#0b4f5e"/>
+      <ellipse cx="252" cy="474" rx="40" ry="17" fill="#0b4f5e"/>
 
-      <!-- touch areas (drawn last, invisible) -->
-      <path class="hit" data-part="tail" d="M310 380 L392 360 L392 450 L320 460 z"/>
-      <path class="hit" data-part="head" d="M30 0 L370 0 L330 160 L70 160 z"/>
-      <ellipse class="hit" data-part="belly" cx="200" cy="395" rx="100" ry="85"/>
-      <path class="hit" data-part="back" d="M42 230 L84 230 L120 330 L108 470 L60 430 L40 330 z"/>
-      <path class="hit" data-part="back" d="M358 230 L316 230 L280 330 L292 470 L340 430 L360 330 z"/>
-      <rect class="hit" data-part="face" x="80" y="155" width="240" height="160" rx="60"/>
+      <!-- touch areas (invisible) -->
+      <path class="hit" data-part="tail" d="M318 380 L392 352 L392 450 L322 462 z"/>
+      <path class="hit" data-part="head" d="M20 0 L380 0 L330 172 L70 172 z"/>
+      <ellipse class="hit" data-part="belly" cx="200" cy="392" rx="100" ry="85"/>
+      <path class="hit" data-part="back" d="M48 250 L88 250 L118 330 L108 470 L62 430 L44 330 z"/>
+      <path class="hit" data-part="back" d="M352 250 L312 250 L282 330 L292 470 L338 430 L356 330 z"/>
+      <rect class="hit" data-part="face" x="88" y="172" width="224" height="150" rx="60"/>
     </svg>
     <canvas class="eye" id="eyeL" width="128" height="128"></canvas>
     <canvas class="eye" id="eyeR" width="128" height="128"></canvas>
-    <svg id="maskSvg" viewBox="0 0 400 500" style="pointer-events:none">
-        <!-- sleep mask -->
-        <g id="mask" style="transform: translateY(-260px); opacity:0; transition: transform .5s cubic-bezier(.3,1.3,.5,1), opacity .3s">
-          <path d="M60 205 C80 150 320 150 340 205 C350 250 320 300 270 290 C235 284 225 262 200 262 C175 262 165 284 130 290 C80 300 50 250 60 205 z" fill="#7b4fd6" stroke="#4c2d91" stroke-width="5"/>
-          <path d="M100 236 q30 22 60 0" fill="none" stroke="#f6ecff" stroke-width="6" stroke-linecap="round"/>
-          <path d="M240 236 q30 22 60 0" fill="none" stroke="#f6ecff" stroke-width="6" stroke-linecap="round"/>
-          <text x="200" y="208" font-size="22" font-weight="700" fill="#ffd46b" text-anchor="middle" font-family="system-ui,sans-serif">z z z</text>
-          <path d="M58 215 C30 200 28 175 48 165" fill="none" stroke="#4c2d91" stroke-width="7"/>
-          <path d="M342 215 C370 200 372 175 352 165" fill="none" stroke="#4c2d91" stroke-width="7"/>
-        </g>
+    <svg viewBox="0 0 400 500" style="pointer-events:none">
+      <g id="mask" style="transform: translateY(-260px); opacity:0; transition: transform .5s cubic-bezier(.3,1.3,.5,1), opacity .3s">
+        <path d="M70 212 C88 160 312 160 330 212 C340 258 312 300 266 292 C234 286 224 266 200 266 C176 266 166 286 134 292 C88 300 60 258 70 212 z" fill="#7b4fd6" stroke="#4c2d91" stroke-width="5"/>
+        <path d="M112 240 q30 22 60 0" fill="none" stroke="#f6ecff" stroke-width="6" stroke-linecap="round"/>
+        <path d="M228 240 q30 22 60 0" fill="none" stroke="#f6ecff" stroke-width="6" stroke-linecap="round"/>
+        <text x="200" y="210" font-size="20" font-weight="700" fill="#ffd46b" text-anchor="middle" font-family="system-ui,sans-serif">z z z</text>
+        <path d="M68 222 C42 206 40 182 60 172" fill="none" stroke="#4c2d91" stroke-width="7"/>
+        <path d="M332 222 C358 206 360 182 340 172" fill="none" stroke="#4c2d91" stroke-width="7"/>
+      </g>
     </svg>
     <div id="ripple"></div>
   </div></div>
@@ -158,9 +179,20 @@
   <button data-act="SHAKE">🌀 Shake</button>
   <button data-act="UPSIDE">🙃 Upside down</button>
   <button data-act="SING">🎵 Sing</button>
-  <button class="mask" id="maskBtn">😴 Put sleep mask on</button>
+  <button class="wide mask" id="maskBtn">😴 Put sleep mask on</button>
 </div>
 <p class="hint">Tap his head to pet him, tickle his belly, stroke his sides, or pull his tail. On a phone you can shake it too.</p>
+
+<div class="panel">
+  <h2>Test a DLC</h2>
+  <div class="row">
+    <select id="dlcPick" aria-label="Your DLCs"><option value="">Pick one of your DLCs…</option></select>
+    <label class="file">Upload .dlc<input type="file" id="dlcFile" accept=".dlc,.DLC"></label>
+  </div>
+  <div id="dlcInfo"></div>
+  <div id="dlcButtons"></div>
+</div>
+
 <p class="credit">Fan project. Eyes and sounds load from the Furby Connect files in the <a href="https://github.com/Furby-ReConnect/Furby" target="_blank" rel="noopener">Furby-ReConnect</a> repo. Sound decoding is ported from <a href="https://github.com/John-K/a1800_codec" target="_blank" rel="noopener">a1800_codec</a>. Furby is a trademark of Hasbro.</p>
 
 <div id="start">
@@ -174,7 +206,16 @@
   const { Furby, ACT } = window.FurbySim;
   const $ = s => document.querySelector(s);
   const furbyEl = $('#furby'), earL = $('#earL'), earR = $('#earR'), beakLow = $('#beakLow'), bobEl = $('#bob');
-  let motor = 0, level = 0, nudge = 0;
+  let level = 0, nudge = 0;
+
+  // The motor: one cam drives ears, body tilt and beak, like the real toy.
+  const motor = { pos: 0, from: 0, to: 0, t0: 0, dur: 1, queue: [] };
+  function runMotor(steps) { motor.queue = steps.slice(); nextStep(performance.now()); }
+  function nextStep(t) {
+    const s = motor.queue.shift();
+    if (!s) return;
+    motor.from = motor.pos; motor.to = s[0]; motor.t0 = t; motor.dur = Math.max(60, s[1]);
+  }
 
   const furby = window.furby = new Furby({
     leftCanvas: $('#eyeL'), rightCanvas: $('#eyeR'),
@@ -182,39 +223,44 @@
     onBusy: b => { document.body.classList.toggle('busy', b); },
     onMove: (kind, v) => {
       if (kind === 'level') level = level * 0.6 + v * 0.4;
-      else if (kind === 'motor') motor = 1;
+      else if (kind === 'motor') runMotor(v);
       else if (kind === 'nudge') nudge = 1;
     },
   });
 
-  // body, ears and beak motion
   let t0 = performance.now();
   function animate(t) {
     const s = (t - t0) / 1000;
-    motor *= 0.985; nudge *= 0.9;
+    // advance the motor
+    const k = Math.min(1, (t - motor.t0) / motor.dur);
+    motor.pos = motor.from + (motor.to - motor.from) * (0.5 - Math.cos(k * Math.PI) / 2);
+    if (k >= 1) nextStep(t);
+    const ph = motor.pos / 476;                      // 0..1 around the cam
+    nudge *= 0.9;
     const talk = Math.min(1, level * 1.6);
     const sleep = furby.asleep ? 1 : 0;
-    const earBase = sleep ? 28 : 0;
-    const wig = Math.sin(s * 9) * (talk * 10 + motor * 8) + Math.sin(s * 1.3) * 2 + nudge * Math.sin(s * 40) * 6;
-    earL.style.transform = `rotate(${-earBase - wig}deg)`;
-    earR.style.transform = `rotate(${earBase + wig}deg)`;
-    const open = talk * 22;
-    beakLow.setAttribute('d', `M178 300 Q200 ${330 + open} 222 300 z`);
-    const bob = Math.sin(s * (sleep ? 1.2 : 2)) * (sleep ? 3 : 2) + talk * Math.sin(s * 14) * 3;
-    const tilt = Math.sin(s * 3.1) * motor * 4 + nudge * Math.sin(s * 30) * 2;
+    const earCam = Math.sin(ph * Math.PI) * 16;      // ears fold back half way round the cam
+    const earBase = sleep ? 26 : 0;
+    const wig = Math.sin(s * 9) * talk * 6 + Math.sin(s * 1.3) * 1.5 + nudge * Math.sin(s * 40) * 6;
+    earL.style.transform = `rotate(${-earBase - earCam - wig}deg)`;
+    earR.style.transform = `rotate(${earBase + earCam + wig}deg)`;
+    const open = talk * 16 + Math.max(0, Math.sin(ph * Math.PI * 2)) * 6;
+    beakLow.setAttribute('d', `M186 302 Q200 ${322 + open} 214 302 z`);
+    const lean = Math.sin(ph * Math.PI * 2) * 4;     // body rocks back and forth with the cam
+    const bob = Math.sin(s * (sleep ? 1.2 : 2)) * (sleep ? 3 : 1.5) + talk * Math.sin(s * 14) * 2;
+    const tilt = lean + nudge * Math.sin(s * 30) * 2;
     bobEl.style.transform = `translateY(${bob}px) rotate(${tilt}deg)`;
-    document.documentElement.style.setProperty('--ant', sleep ? '#3a3a7a' : talk > 0.1 ? '#ffd24a' : '#7af');
+    document.documentElement.style.setProperty('--ant', sleep ? '#5a5aa8' : talk > 0.1 ? '#ffe45c' : '#c8f56a');
     requestAnimationFrame(animate);
   }
   requestAnimationFrame(animate);
 
   function ripple(x, y) {
-    const r = $('#ripple'), box = furbyEl.getBoundingClientRect();
+    const r = $('#ripple'), box = bobEl.getBoundingClientRect();
     r.style.left = (x - box.left) + 'px'; r.style.top = (y - box.top) + 'px';
     r.classList.remove('go'); void r.offsetWidth; r.classList.add('go');
   }
 
-  // touching Furby
   const partAct = { head: ACT.HEAD, belly: ACT.BELLY, back: ACT.BACK, tail: ACT.TAIL, face: ACT.HEAD };
   document.querySelectorAll('.hit').forEach(el => {
     el.addEventListener('pointerdown', e => {
@@ -225,7 +271,6 @@
     });
   });
 
-  // buttons
   document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', async () => {
     if (furby.asleep) { nudge = 1; return; }
     const a = b.dataset.act;
@@ -240,7 +285,6 @@
     furby.act(ACT[a]);
   }));
 
-  // sleep mask
   const mask = $('#mask'), maskBtn = $('#maskBtn');
   maskBtn.addEventListener('click', async () => {
     if (!furby.asleep) {
@@ -254,8 +298,47 @@
     }
   });
 
-  // personality
   $('#pers').addEventListener('change', e => furby.setPersonality(e.target.value).catch(err => { $('#status').textContent = 'Could not load that personality. Check your connection.'; console.error(err); }));
+
+  // ----- DLC testing -----
+  const dlcInfo = $('#dlcInfo'), dlcButtons = $('#dlcButtons');
+  let dlcIndex = [];
+  fetch('../dlc/index.js', { cache: 'no-store' }).then(r => r.ok ? r.text() : '[]').then(t => {
+    try { dlcIndex = JSON.parse(t); } catch (e) { dlcIndex = []; }
+    for (const d of dlcIndex) { const o = document.createElement('option'); o.value = d.file; o.textContent = d.title || d.file; $('#dlcPick').appendChild(o); }
+  }).catch(() => {});
+
+  async function useDLC(bytes, name, buttons) {
+    if (!furby.base) { dlcInfo.textContent = 'Wake Furby up first.'; return; }
+    dlcInfo.textContent = 'Loading ' + name + '…'; dlcButtons.innerHTML = '';
+    try {
+      const all = await furby.loadDLC(bytes, name);
+      const list = buttons && buttons.length ? buttons : all.map((a, i) => ({ title: 'Action ' + a.join('/'), action: a }));
+      dlcInfo.textContent = name + ' is loaded. Tap a button to play it.';
+      for (const b of list) {
+        const el = document.createElement('button');
+        el.textContent = b.title; el.title = b.action.join('/');
+        el.onclick = () => furby.playDLC(b.action);
+        dlcButtons.appendChild(el);
+      }
+      if (list[0]) furby.playDLC(list[0].action);
+    } catch (err) { console.error(err); dlcInfo.textContent = 'Could not read that DLC: ' + err.message; }
+  }
+  $('#dlcPick').addEventListener('change', async e => {
+    const f = e.target.value; if (!f) return;
+    const d = dlcIndex.find(x => x.file === f);
+    dlcInfo.textContent = 'Downloading ' + f + '…';
+    try {
+      const r = await fetch('../dlc/' + f, { cache: 'no-store' });
+      if (!r.ok) throw new Error(r.status);
+      await useDLC(new Uint8Array(await r.arrayBuffer()), f, d && d.buttons);
+    } catch (err) { dlcInfo.textContent = 'Could not download ' + f + '.'; }
+  });
+  $('#dlcFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; if (!f) return;
+    await useDLC(new Uint8Array(await f.arrayBuffer()), f.name);
+    e.target.value = '';
+  });
 
   // shaking the phone
   let lastShake = 0, prev = null;
