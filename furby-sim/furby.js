@@ -232,6 +232,17 @@ class GfxSet {
     this._irisSrc = eyePal; this._iris = out;
     return out;
   }
+  // An eyeball cel has the golden glow at the bottom of the iris (colours 8-23 of palette 6).
+  isIris(cel, px) {
+    if (!this.irisCels) this.irisCels = new Map();
+    let v = this.irisCels.get(cel);
+    if (v === undefined) {
+      let gold = 0;
+      for (let i = 0; i < 4096; i++) if (px[i] >= 8 && px[i] <= 23) gold++;
+      v = gold > 40; this.irisCels.set(cel, v);
+    }
+    return v;
+  }
   frameCount(anim) { const e = this.ents[anim * 8]; return e ? e.n : 0; }
   // Draw frame `fr` of `anim` for eye `side` (0 left, 1 right) into a 128x128 Uint32 buffer.
   draw(buf, anim, fr, side, eyePal) {
@@ -239,6 +250,10 @@ class GfxSet {
       const e = this.ents[anim * 8 + L * 2 + side];
       if (!e || !e.n) continue;
       const f = e.frames[Math.max(0, Math.min(fr, e.n - 1))];
+      // the eyeball's four quarters all take the eye colour if any quarter shows the iris glow
+      let iris = false;
+      if (eyePal && this.isBase && L === 0)
+        for (let q = 0; q < 4; q++) { const px = this.cels.get(f[q * 2]); if (!(f[q * 2 + 1] & 4) && px && this.isIris(f[q * 2], px)) iris = true; }
       for (let q = 0; q < 4; q++) {
         const cel = f[q * 2], ref = f[q * 2 + 1];
         if (ref & 4) continue;
@@ -247,7 +262,8 @@ class GfxSet {
         let p = ((e.e2 & 0xFFFF) >> 6) + (ref >> 10) - 6;
         p = ((p % this.pals.length) + this.pals.length) % this.pals.length;
         // Layer 0 palette 6 of the base set is the iris: swap in the chosen eye colour.
-        const pal = (eyePal && this.isBase && L === 0 && p === 6) ? this.irisPal(eyePal) : this.pals[p];
+        // Only the eyeball itself takes the eye colour; lids, curls and little drawings keep theirs.
+        const pal = (eyePal && this.isBase && L === 0 && p === 6 && iris) ? this.irisPal(eyePal) : this.pals[p];
         const ox = (q & 1) * 64, oy = (q >> 1) * 64;
         for (let y = 0; y < 64; y++) {
           let d = (oy + y) * 128 + ox, s = y * 64;
@@ -440,7 +456,7 @@ class Furby {
   }
 
   // Pick a reaction for an action input, the way the toy's XLS table does.
-  pickSeq(input) {
+  pickSeq(input, preferSubs) {
     const tables = this.pers ? [this.pers, this.base] : [this.base];
     if (this.dlc && input === ACT.DLC) tables.unshift(this.dlc);
     for (const t of tables) {
@@ -455,7 +471,9 @@ class Furby {
       }
       const subs = A[idx];
       if (!subs.length) continue;
-      const sub = subs[Math.floor(Math.random() * subs.length)];
+      let si = Math.floor(Math.random() * subs.length);
+      if (preferSubs) { const ok = preferSubs.filter(i => i < subs.length); if (ok.length) si = ok[Math.floor(Math.random() * ok.length)]; }
+      const sub = subs[si];
       let items = sub.items.filter(id => (id >> 12) !== 0xF && ((id >> 12) !== 1 || this.dlc));
       if (!items.length) continue;
       const fresh = items.filter(id => !this.recent.includes(t === this.base ? id : id | 0x10000));
@@ -518,12 +536,32 @@ class Furby {
 
   async act(input, opts = {}) {
     if (!this.base) return;
-    if (this.busy && !opts.force && performance.now() - this.seqStart < 1500) { this.ui.onMove('nudge', 1); return; }
+    if (this.busy && !opts.force && performance.now() - this.seqStart < 700) { this.ui.onMove('nudge', 1); return; }
     if (this.asleep && !opts.whileAsleep) return;
     const pick = this.pickSeq(input);
     if (!pick || !pick.seq) return;
     this.lastAction = performance.now();
     await this.runSeq(pick.seq, opts);
+  }
+
+  // Feeding: a piece of food drops into his eyes and bounces while he munches,
+  // then he says what he thought of it (inputs 14 and 15 of the toy's table).
+  async feed() {
+    if (!this.base || this.asleep) return;
+    this.lastAction = performance.now();
+    const foods = [133, 134, 135, 136, 137, 138, 139].filter(a => a < this.base.gfx.anims);
+    const food = foods[Math.floor(Math.random() * foods.length)];
+    const munch = this.pickSeq(ACT.FEED - 1, [0]);           // eating noises (not the sick ones)
+    const words = munch && munch.seq ? munch.seq.filter(w => (w >> 12) !== 8 && (w >> 12) !== 0xA && w !== 0) : [];
+    const seq = [0x8000 | food, ...words, 0x1000 | 60, 0];
+    const tok = this.token + 1;
+    await this.runSeq(seq, { stayEyes: true });
+    if (this.token !== tok || this.asleep) return;
+    // mostly "mmm, yummy", sometimes "more food!", now and then a burp or worse
+    const r = Math.random();
+    const react = this.pickSeq(ACT.FEED, [r < 0.6 ? 1 : r < 0.85 ? 2 : 0]);
+    if (react && react.seq) await this.runSeq(react.seq);
+    else this.setEye(this.base.gfx, 1, true);
   }
 
   async runSeq(seq, opts = {}) {
@@ -623,7 +661,7 @@ class Furby {
 
   render(t) {
     const e = this.eye;
-    this.bufL.fill(0xFFFFFFFF); this.bufR.fill(0xFFFFFFFF);
+    this.bufL.fill(0xFF000000); this.bufR.fill(0xFF000000);   // the screen is black where nothing is drawn
     if (e) {
       const n = e.gfx.frameCount(e.anim);
       let fr = Math.max(0, Math.floor((t - e.start) / FRAME_MS));
