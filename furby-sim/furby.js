@@ -27,6 +27,7 @@ const CEL_BYTES = 3072;
 
 // ---------- fetching ----------
 // Same files on a second CDN, used if GitHub's raw server is slow or blocked.
+const LOCAL = 'files/';
 const MIRROR = 'https://cdn.jsdelivr.net/gh/Furby-ReConnect/Furby@master/Furby-Files/Furby-NAND/Personalities/';
 let inFlight = 0; const waiting = [];
 async function slot() { if (inFlight < 6) { inFlight++; return; } await new Promise(r => waiting.push(r)); inFlight++; }
@@ -49,8 +50,10 @@ async function fetchBytes(url, start, end) {
   try {
     let lastErr;
     for (let tries = 0; tries < 4; tries++) {
-      const u = (tries % 2 === 1 && url.startsWith(REPO)) ? MIRROR + url.slice(REPO.length) : url;
-      try { return await fetchOnce(u, start, end, 25000); }
+      // 1st: the copy on this site, then GitHub raw, then jsDelivr
+      const rel = url.startsWith(REPO) ? url.slice(REPO.length) : null;
+      const u = rel === null ? url : [LOCAL + rel, url, MIRROR + rel, LOCAL + rel][tries];
+      try { return await fetchOnce(u, start, end, tries === 0 ? 30000 : 15000); }
       catch (e) { lastErr = e; await new Promise(res => setTimeout(res, 500 * (tries + 1))); }
     }
     throw lastErr;
@@ -626,8 +629,9 @@ class Furby {
       let fr = Math.max(0, Math.floor((t - e.start) / FRAME_MS));
       fr = e.hold ? Math.min(fr, n - 1) : fr % n;
       const ep = this.eyePal;
-      e.gfx.draw(this.bufL, e.anim, fr, 0, ep);
-      e.gfx.draw(this.bufR, e.anim, fr, 1, ep);
+      // odd entries are the Furby's left eye (our right as we look at him)
+      e.gfx.draw(this.bufL, e.anim, fr, 1, ep);
+      e.gfx.draw(this.bufR, e.anim, fr, 0, ep);
     }
     this.ctxL.putImageData(this.imgL, 0, 0); this.ctxR.putImageData(this.imgR, 0, 0);
   }
