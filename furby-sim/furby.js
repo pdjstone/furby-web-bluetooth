@@ -409,7 +409,7 @@ class Furby {
     ]);
     this.base.seq = parseLists(seq, 6); this.base.xls = parseXLS(xls); this.base.mtr = parseMTR(mtr);
     this.idleAnims = [1, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21].filter(a => a < this.base.gfx.anims);
-    await this.base.gfx.ensure([1, 7]);
+    await this.base.gfx.ensure([1, 7, 41]);   // 41 = lids closing, used for sleep
     this.base.gfx.ensure(this.idleAnims);
     this.pers = null;
     this.setEye(this.base.gfx, 1, true);
@@ -437,6 +437,7 @@ class Furby {
     if (!wasAsleep) {
       this.asleep = true;
       // eyelids close (the toy's lids-closing animation)
+      try { await this.base.gfx.ensure([41]); } catch (e) {}
       this.setEye(this.base.gfx, 41, true);
       await this.sleepMs(1800);
       if (stale()) return;
