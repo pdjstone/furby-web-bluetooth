@@ -416,63 +416,38 @@ class Furby {
     this.ui.onStatus('');
   }
 
-  // Changing personality the way the toy does it: he falls asleep, dreams about who
-  // he is turning into (input 74 of the base table), and wakes up as the new Furby.
+  // Picking a personality loads its files and plays its intro: the first entry of
+  // input 29 in its own table, where its signature eye animation (e.g. the Cat peeking
+  // in) plays with its own sound. Always the same one, like a real intro.
   async setPersonality(name) {
     const req = this.persReq = (this.persReq || 0) + 1;
     const stale = () => this.persReq !== req;
-    this.token++;
-    this.voice.stopAll(); this.busy = false;
+    this.token++; this.voice.stopAll(); this.busy = false;
     this.personality = name;
-    const p = PERSONALITIES[name];
-    const loading = name === 'Base' ? Promise.resolve(null) : (async () => {
-      const pers = { name, gfx: new GfxSet(p, this.fur), snd: new SoundBank(p, this.voice) };
+    let pers = null;
+    if (name !== 'Base') {
+      this.ui.onStatus('Loading ' + name + '…');
+      const p = PERSONALITIES[name];
+      pers = { name, gfx: new GfxSet(p, this.fur), snd: new SoundBank(p, this.voice) };
       const [seq, xls, mtr] = await Promise.all([fetchBytes(REPO + p.dir + '/' + p.seq), fetchBytes(REPO + p.dir + '/' + p.xls),
         fetchBytes(REPO + p.dir + '/' + p.mtr), pers.gfx.load(), pers.snd.load()]);
       pers.seq = parseLists(seq, 6); pers.xls = parseXLS(xls); pers.mtr = parseMTR(mtr);
-      return pers;
-    })();
-    loading.catch(() => {});
-    const wasAsleep = this.asleep;
-    if (!wasAsleep) {
-      this.asleep = true;
-      // eyelids close (the toy's lids-closing animation)
-      try { await this.base.gfx.ensure([41]); } catch (e) {}
-      this.setEye(this.base.gfx, 41, true);
-      await this.sleepMs(1800);
       if (stale()) return;
-      // the dream: sub-list per personality in the base table
-      const dreamSub = { DJ: 0, Princess: 1, Ninja: 2, Pirate: 3, PopStar: 4, Cat: 5 }[name];
-      if (dreamSub !== undefined) {
-        const t = this.base.xls[ACT.DREAM], sub = t && t[0] && t[0][dreamSub];
-        const id = sub && sub.items.length && sub.items[Math.floor(Math.random() * sub.items.length)];
-        const seq = id !== undefined && id < 0x1000 && this.base.seq[id];
-        if (seq) {
-          // eyes stay shut while he talks in his sleep; the snoring is cut short
-          const words = seq.filter(w => (w >> 12) !== 8 && (w >> 12) !== 0xA);
-          this.setEye(this.base.gfx, 41, true);
-          const cut = setTimeout(() => { if (!stale()) { this.token++; this.voice.stopAll(); } }, 9000);
-          await this.runSeq(words, { stayEyes: true });
-          clearTimeout(cut);
-        }
-      }
     }
-    if (stale()) return;
-    this.ui.onStatus(name === 'Base' ? '' : 'Loading ' + name + '…');
-    let pers;
-    try { pers = await loading; }
-    catch (err) {
-      // could not download: wake back up as he was
-      if (!stale() && !wasAsleep) { this.asleep = false; this.token++; this.busy = false; this.act(ACT.WAKE, { force: true }); }
-      throw err;
-    }
-    if (stale()) return;
     this.pers = pers;
     this.ui.onStatus('');
-    if (wasAsleep || this.masked) return;   // with the mask on he stays asleep and wakes up changed later
-    this.asleep = false;
-    this.token++; this.busy = false;
-    await this.act(ACT.WAKE, { force: true });
+    if (this.asleep) return;            // with the mask on he wakes up as the new personality later
+    const intro = this.introOf(pers || this.base);
+    this.lastAction = performance.now();
+    if (intro) await this.runSeq(intro);
+    else await this.act(ACT.HEAD, { force: true });
+  }
+
+  introOf(t) {
+    const A = t.xls[ACT.INTRO];
+    const id = A && A[0] && A[0][0] && A[0][0].items[0];
+    const r = id !== undefined && this.resolve(id);
+    return r && r.seq;
   }
 
   setFur(fur) {
