@@ -1,5 +1,20 @@
 [
     {
+        "file": "stickper.dlc",
+        "title": "Stick man personality",
+        "buttons": [
+            {
+                "title": "stick man intro",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
         "file": "orngbig.dlc",
         "title": "Orange eyes on his reactions BIG",
         "buttons": [
