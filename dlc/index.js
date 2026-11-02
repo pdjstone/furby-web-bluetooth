@@ -1,7 +1,7 @@
 [
     {
-        "file": "stickpr2.dlc",
-        "title": "Stick man personality v2 (no idle hold)",
+        "file": "stickpr3.dlc",
+        "title": "Stick man personality v3",
         "buttons": [
             {
                 "title": "stick man intro",
