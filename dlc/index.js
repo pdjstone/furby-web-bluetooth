@@ -1,5 +1,20 @@
 [
     {
+        "file": "orangebig.dlc",
+        "title": "Orange eyes on his reactions BIG",
+        "buttons": [
+            {
+                "title": "Test: orange eyes",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    1
+                ]
+            }
+        ]
+    },
+    {
         "file": "orange4.dlc",
         "title": "Orange eyes on his reactions v4",
         "buttons": [
