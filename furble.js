@@ -67,7 +67,7 @@ function log() {
 // ignores commands, e.g. right after a DLC upload while it saves the file).
 const GP_TIMEOUT_MS = 2000;
 const GP_MAX_TRIES = 5;
-function sendGPCmd(data, response_prefix) {
+function sendGPCmd(data, response_prefix, timeoutMs = GP_TIMEOUT_MS, maxTries = GP_MAX_TRIES) {
     return new Promise((resolve, reject) => {
         if (data.length != 2 && data[0] != 0x20 && data[1] != 0x06)
             log('Sending data to GeneralPlusWrite', buf2hex(data));
@@ -99,16 +99,16 @@ function sendGPCmd(data, response_prefix) {
                     if (done) return;
                     timer = setTimeout(() => {
                         if (done) return;
-                        if (tries >= GP_MAX_TRIES) {
+                        if (tries >= maxTries) {
                             finish(reject, new Error('No reply from Furby to command ' + buf2hex(data)));
                         } else {
                             log('No reply yet, resending', buf2hex(data));
                             send();
                         }
-                    }, GP_TIMEOUT_MS);
+                    }, timeoutMs);
                 }).catch(error => {
                     // Bluetooth busy: wait a moment and try again
-                    if (!done && tries < GP_MAX_TRIES) {
+                    if (!done && tries < maxTries) {
                         setTimeout(send, 200);
                     } else {
                         finish(reject, error);
@@ -177,12 +177,15 @@ function customAction() {
 function enableEyes(b) {
     return sendGPCmd([0xcd, b ? 1 : 0], NO_RESPONSE);
 }
+// Loading a big DLC can take the Furby a long time, and resending the
+// command while it is still loading only starts it over. So wait up to
+// 45 s for one reply instead of resending every 2 s.
 function loadDLC(slot) {
-    return sendGPCmd([0x60, slot], [0xdc]);
+    return sendGPCmd([0x60, slot], [0xdc], 45000, 1);
 }
 
 function activateDLC() {
-    return sendGPCmd([0x61], [0xdc]);
+    return sendGPCmd([0x61], [0xdc], 20000, 2);
 }
 
 function deactivateDLC(slot) {

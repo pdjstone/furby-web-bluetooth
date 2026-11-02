@@ -217,7 +217,7 @@ async function dlcActivateClicked() {
         let dlcfile = dlcsel.options[dlcsel.selectedIndex].value;
         let params = dlcdata[dlcfile];
         let wanted = dlcfile.replace(/\.dlc$/i, '').toUpperCase();
-        msg.ok('Activating...');
+        msg.ok('Activating... (big DLCs can take up to a minute)');
         let slots = await getDLCInfo();
         let slot = -1, used = [];
         for (let i = 0; i < slots.length; i++) {
