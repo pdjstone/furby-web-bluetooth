@@ -19,7 +19,7 @@ const PERSONALITIES = {
 // Action inputs (XLS index = Furby action "input" number minus 1).
 const ACT = {
   HEAD: 0, BELLY: 1, BACK: 2, TAIL: 3, HUG: 4, FART: 6, TALK: 7, SHAKE: 8, UPSIDE: 9,
-  ROCK: 11, FEED: 14, SING: 16, LOUD: 19, BORED: 23, WAKE: 26, SLEEP: 27, INTRO: 28, DLC: 74,
+  ROCK: 11, FEED: 14, SING: 16, LOUD: 19, BORED: 23, WAKE: 26, SLEEP: 27, INTRO: 28, DREAM: 73, DLC: 74,
 };
 
 const FRAME_MS = 1000 / 15;   // eye animations run at 15 frames a second
@@ -243,6 +243,18 @@ class GfxSet {
     }
     return v;
   }
+  layerIsIris(e) {
+    if (e.iris !== undefined) return e.iris;
+    let all = true;
+    for (const f of e.frames) for (let q = 0; q < 4; q++) {
+      if (f[q * 2 + 1] & 4) continue;
+      const px = this.cels.get(f[q * 2]);
+      if (!px) { all = false; continue; }
+      if (this.isIris(f[q * 2], px)) return (e.iris = true);
+    }
+    if (all) e.iris = false;
+    return false;
+  }
   frameCount(anim) { const e = this.ents[anim * 8]; return e ? e.n : 0; }
   // Draw frame `fr` of `anim` for eye `side` (0 left, 1 right) into a 128x128 Uint32 buffer.
   draw(buf, anim, fr, side, eyePal) {
@@ -250,10 +262,9 @@ class GfxSet {
       const e = this.ents[anim * 8 + L * 2 + side];
       if (!e || !e.n) continue;
       const f = e.frames[Math.max(0, Math.min(fr, e.n - 1))];
-      // the eyeball's four quarters all take the eye colour if any quarter shows the iris glow
-      let iris = false;
-      if (eyePal && this.isBase && L === 0)
-        for (let q = 0; q < 4; q++) { const px = this.cels.get(f[q * 2]); if (!(f[q * 2 + 1] & 4) && px && this.isIris(f[q * 2], px)) iris = true; }
+      // Decide once per layer (not per frame) so the colour never flickers mid-animation:
+      // the layer takes the eye colour if any of its frames shows the iris glow.
+      const iris = !!(eyePal && this.isBase && L === 0 && this.layerIsIris(e));
       for (let q = 0; q < 4; q++) {
         const cel = f[q * 2], ref = f[q * 2 + 1];
         if (ref & 4) continue;
@@ -405,25 +416,62 @@ class Furby {
     this.ui.onStatus('');
   }
 
+  // Changing personality the way the toy does it: he falls asleep, dreams about who
+  // he is turning into (input 74 of the base table), and wakes up as the new Furby.
   async setPersonality(name) {
-    const tok = ++this.token;
+    const req = this.persReq = (this.persReq || 0) + 1;
+    const stale = () => this.persReq !== req;
+    this.token++;
     this.voice.stopAll(); this.busy = false;
     this.personality = name;
-    if (name === 'Base') { this.pers = null; this.ui.onStatus(''); if (!this.asleep) this.act(ACT.HEAD, { force: true }); return; }
-    this.ui.onStatus('Loading ' + name + '…');
     const p = PERSONALITIES[name];
-    const pers = { name, gfx: new GfxSet(p, this.fur), snd: new SoundBank(p, this.voice) };
-    const [seq, xls, mtr] = await Promise.all([fetchBytes(REPO + p.dir + '/' + p.seq), fetchBytes(REPO + p.dir + '/' + p.xls),
-      fetchBytes(REPO + p.dir + '/' + p.mtr), pers.gfx.load(), pers.snd.load()]);
-    pers.seq = parseLists(seq, 6); pers.xls = parseXLS(xls); pers.mtr = parseMTR(mtr);
-    if (tok !== this.token) return;
+    const loading = name === 'Base' ? Promise.resolve(null) : (async () => {
+      const pers = { name, gfx: new GfxSet(p, this.fur), snd: new SoundBank(p, this.voice) };
+      const [seq, xls, mtr] = await Promise.all([fetchBytes(REPO + p.dir + '/' + p.seq), fetchBytes(REPO + p.dir + '/' + p.xls),
+        fetchBytes(REPO + p.dir + '/' + p.mtr), pers.gfx.load(), pers.snd.load()]);
+      pers.seq = parseLists(seq, 6); pers.xls = parseXLS(xls); pers.mtr = parseMTR(mtr);
+      return pers;
+    })();
+    loading.catch(() => {});
+    const wasAsleep = this.asleep;
+    if (!wasAsleep) {
+      this.asleep = true;
+      // eyelids close (the toy's lids-closing animation)
+      this.setEye(this.base.gfx, 41, true);
+      await this.sleepMs(1800);
+      if (stale()) return;
+      // the dream: sub-list per personality in the base table
+      const dreamSub = { DJ: 0, Princess: 1, Ninja: 2, Pirate: 3, PopStar: 4, Cat: 5 }[name];
+      if (dreamSub !== undefined) {
+        const t = this.base.xls[ACT.DREAM], sub = t && t[0] && t[0][dreamSub];
+        const id = sub && sub.items.length && sub.items[Math.floor(Math.random() * sub.items.length)];
+        const seq = id !== undefined && id < 0x1000 && this.base.seq[id];
+        if (seq) {
+          // eyes stay shut while he talks in his sleep; the snoring is cut short
+          const words = seq.filter(w => (w >> 12) !== 8 && (w >> 12) !== 0xA);
+          this.setEye(this.base.gfx, 41, true);
+          const cut = setTimeout(() => { if (!stale()) { this.token++; this.voice.stopAll(); } }, 9000);
+          await this.runSeq(words, { stayEyes: true });
+          clearTimeout(cut);
+        }
+      }
+    }
+    if (stale()) return;
+    this.ui.onStatus(name === 'Base' ? '' : 'Loading ' + name + '…');
+    let pers;
+    try { pers = await loading; }
+    catch (err) {
+      // could not download: wake back up as he was
+      if (!stale() && !wasAsleep) { this.asleep = false; this.token++; this.busy = false; this.act(ACT.WAKE, { force: true }); }
+      throw err;
+    }
+    if (stale()) return;
     this.pers = pers;
     this.ui.onStatus('');
-    // Picking a personality plays its intro (action 29 in the personality's table).
-    if (!this.asleep) {
-      const intro = this.pickFrom(pers, ACT.INTRO, 0);
-      if (intro) this.runSeq(intro.seq); else this.act(ACT.HEAD, { force: true });
-    }
+    if (wasAsleep || this.masked) return;   // with the mask on he stays asleep and wakes up changed later
+    this.asleep = false;
+    this.token++; this.busy = false;
+    await this.act(ACT.WAKE, { force: true });
   }
 
   setFur(fur) {
@@ -627,15 +675,18 @@ class Furby {
   sleepMs(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   async maskOn() {
+    this.masked = true;
     if (this.asleep) return;
     this.asleep = true;
     this.lastAction = performance.now();
     const pick = this.pickSeq(ACT.SLEEP);
     if (pick && pick.seq) await this.runSeq(pick.seq, { stayEyes: true });
     this.voice.stopAll();
+    if (this.asleep) this.eye = { gfx: this.base.gfx, anim: 41, start: performance.now() - 45 * FRAME_MS, hold: true };
   }
 
   async maskOff() {
+    this.masked = false;
     if (!this.asleep) return;
     this.asleep = false;
     this.token++; this.busy = false;
@@ -661,11 +712,13 @@ class Furby {
 
   render(t) {
     const e = this.eye;
-    this.bufL.fill(0xFF000000); this.bufR.fill(0xFF000000);   // the screen is black where nothing is drawn
+    this.bufL.fill(0xFFFFFFFF); this.bufR.fill(0xFFFFFFFF);
     if (e) {
       const n = e.gfx.frameCount(e.anim);
       let fr = Math.max(0, Math.floor((t - e.start) / FRAME_MS));
       fr = e.hold ? Math.min(fr, n - 1) : fr % n;
+      // asleep: stop the lids-closing animation while the lids are shut (its last frames open again)
+      if (this.asleep && e.anim === 41 && e.gfx === this.base.gfx) fr = Math.min(fr, 45);
       const ep = this.eyePal;
       // odd entries are the Furby's left eye (our right as we look at him)
       e.gfx.draw(this.bufL, e.anim, fr, 1, ep);
