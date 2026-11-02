@@ -1,7 +1,7 @@
 [
     {
-        "file": "orangebig.dlc",
-        "title": "Orange eyes on his reactions BIG",
+        "file": "orangemid.dlc",
+        "title": "Orange eyes on his reactions MEDIUM",
         "buttons": [
             {
                 "title": "Test: orange eyes",

@@ -340,7 +340,7 @@ async function fetchAndUploadDLC(dlcurl) {
         });
         msg.ok('DLC uploaded!');
     } catch (e) {
-        msg.error('DLC upload failed :( ' + e.message);
+        msg.error('DLC upload failed :( ' + (e && e.message ? e.message : e));
         log(e.message);
         console.error(e);
         await setAntennaColor(255,0,0);
