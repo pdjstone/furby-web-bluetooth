@@ -1,5 +1,20 @@
 [
     {
+        "file": "djintro.dlc",
+        "title": "DJ intro (orange)",
+        "buttons": [
+            {
+                "title": "dj intro",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
         "file": "stickpr3.dlc",
         "title": "Stick man personality v3",
         "buttons": [
