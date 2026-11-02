@@ -1,5 +1,29 @@
 [
     {
+        "file": "basetest.dlc",
+        "title": "TEST: built-in reaction",
+        "buttons": [
+            {
+                "title": "1: his own reaction",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            },
+            {
+                "title": "2: his own voice + orange eyes",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    1
+                ]
+            }
+        ]
+    },
+    {
         "file": "eyepink.dlc",
         "title": "Pink eyes (20 s)",
         "buttons": [
