@@ -304,7 +304,7 @@ function makeDLCFilename(dlcurl) {
 }
 
 async function fetchAndUploadDLC(dlcurl) {
-    let response = await fetch(dlcurl);
+    let response = await fetch(dlcurl, {cache: 'no-store'});
     if (response.status != 200) {
         throw new Error('Failed to fetch DLC', dlcurl);
         msg.error('DLC not found on server');
