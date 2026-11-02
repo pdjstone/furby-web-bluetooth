@@ -1,5 +1,20 @@
 [
     {
+        "file": "djintr2.dlc",
+        "title": "DJ intro v2 (full frames, orange idle)",
+        "buttons": [
+            {
+                "title": "dj intro",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
         "file": "djintro.dlc",
         "title": "DJ intro (orange)",
         "buttons": [
