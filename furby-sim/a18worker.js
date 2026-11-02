@@ -1,4 +1,4 @@
-importScripts('a1800.js');
+importScripts('a1800.js?v=3');
 onmessage = e => {
   const { id, buf } = e.data;
   try {

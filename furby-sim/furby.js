@@ -26,18 +26,35 @@ const FRAME_MS = 1000 / 15;   // eye animations run at 15 frames a second
 const CEL_BYTES = 3072;
 
 // ---------- fetching ----------
+// Same files on a second CDN, used if GitHub's raw server is slow or blocked.
+const MIRROR = 'https://cdn.jsdelivr.net/gh/Furby-ReConnect/Furby@master/Furby-Files/Furby-NAND/Personalities/';
+let inFlight = 0; const waiting = [];
+async function slot() { if (inFlight < 6) { inFlight++; return; } await new Promise(r => waiting.push(r)); inFlight++; }
+function release() { inFlight--; const n = waiting.shift(); if (n) n(); }
+async function fetchOnce(url, start, end, ms) {
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), ms);
+  try {
+    const opts = { signal: ctl.signal };
+    if (start !== undefined) opts.headers = { Range: `bytes=${start}-${end}` };
+    const r = await fetch(url, opts);
+    if (!r.ok) throw new Error(r.status + ' ' + url);
+    const buf = new Uint8Array(await r.arrayBuffer());
+    // a server that ignores Range sends the whole file: cut out the part we asked for
+    if (start !== undefined && r.status === 200 && buf.length > end - start + 1) return buf.slice(start, end + 1);
+    return buf;
+  } finally { clearTimeout(timer); }
+}
 async function fetchBytes(url, start, end) {
-  const opts = start === undefined ? {} : { headers: { Range: `bytes=${start}-${end}` } };
-  for (let tries = 0; ; tries++) {
-    try {
-      const r = await fetch(url, opts);
-      if (!r.ok) throw new Error(r.status + ' ' + url);
-      return new Uint8Array(await r.arrayBuffer());
-    } catch (e) {
-      if (tries >= 2) throw e;
-      await new Promise(res => setTimeout(res, 600 * (tries + 1)));
+  await slot();
+  try {
+    let lastErr;
+    for (let tries = 0; tries < 4; tries++) {
+      const u = (tries % 2 === 1 && url.startsWith(REPO)) ? MIRROR + url.slice(REPO.length) : url;
+      try { return await fetchOnce(u, start, end, 25000); }
+      catch (e) { lastErr = e; await new Promise(res => setTimeout(res, 500 * (tries + 1))); }
     }
-  }
+    throw lastErr;
+  } finally { release(); }
 }
 const u16 = (b, o) => b[o] | (b[o + 1] << 8);
 const u32 = (b, o) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
@@ -187,7 +204,7 @@ class GfxSet {
     const runs = [];
     for (const c of list) {
       const r = runs[runs.length - 1];
-      if (r && c - r[1] <= 6 && c - r[0] < 96) r[1] = c; else runs.push([c, c]);
+      if (r && c - r[1] <= 24 && c - r[0] < 160) r[1] = c; else runs.push([c, c]);
     }
     for (const [a, b] of runs) {
       const pr = fetchBytes(REPO + this.p.dir + '/' + this.p.cel, a * CEL_BYTES, (b + 1) * CEL_BYTES - 1).then(buf => {
@@ -198,6 +215,7 @@ class GfxSet {
           this.pending.delete(c);
         }
       });
+      pr.catch(() => { for (let c = a; c <= b; c++) this.pending.delete(c); });
       for (let c = a; c <= b; c++) this.pending.set(c, pr);
       waits.push(pr);
     }
@@ -241,7 +259,7 @@ class GfxSet {
 class Voice {
   constructor() {
     this.ctx = null;
-    this.worker = new Worker('a18worker.js');
+    this.worker = new Worker('a18worker.js?v=3');
     this.jobs = new Map(); this.nextId = 1;
     this.worker.onmessage = e => { const j = this.jobs.get(e.data.id); this.jobs.delete(e.data.id); e.data.error ? j.rej(new Error(e.data.error)) : j.res(e.data.pcm); };
     this.playing = new Set();
@@ -521,8 +539,10 @@ class Furby {
       const clipLoads = [];
       for (const a of audio) for (const t of a.snd.tracksOf(a.list)) clipLoads.push(a.snd.clip(t));
       const slow = setTimeout(() => this.ui.onStatus('Loading…'), 500);
-      await Promise.all([...[...eyes].map(([g, l]) => g.ensure(l)), ...clipLoads]);
-      clearTimeout(slow); this.ui.onStatus('');
+      try { await Promise.all([...[...eyes].map(([g, l]) => g.ensure(l)), ...clipLoads]); }
+      catch (err) { console.error(err); this.ui.onStatus('Some of Furby\'s files did not download. Check your connection.'); setTimeout(() => this.ui.onStatus(''), 4000); return; }
+      finally { clearTimeout(slow); }
+      this.ui.onStatus('');
       if (tok !== this.token) return;
 
       const sounds = [];

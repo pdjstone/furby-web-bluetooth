@@ -25,16 +25,19 @@
     background: var(--btn); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
     padding: 8px 10px; font: inherit; min-height: 40px; max-width: 100%;
   }
-  #stage { position: relative; width: min(100%, 400px); aspect-ratio: 400 / 500; margin-top: 4px; }
+  #stage { position: relative; width: min(100%, 420px); aspect-ratio: 1; margin-top: 4px; }
   #furby { position: absolute; inset: 0; transform-origin: 50% 58%; transition: transform .6s cubic-bezier(.3,1.4,.5,1); }
   #furby.upside { transform: rotate(180deg); }
   #furby.shaking { animation: shake .12s linear infinite; }
   @keyframes shake { 0%{translate:-6px 0} 50%{translate:6px 2px} 100%{translate:-6px 0} }
-  #bob { position: absolute; inset: 0; transform-origin: 50% 94%; }
+  #bob { position: absolute; inset: 0; transform-origin: 52% 92%; }
   svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-  .eye { position: absolute; width: 20%; aspect-ratio: 1; border-radius: 50%; background: #fff; pointer-events: none; }
-  #eyeL { left: 26.25%; top: 38.4%; }
-  #eyeR { left: 53.75%; top: 38.4%; }
+  .layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; -webkit-user-drag: none; }
+  #earL { transform-origin: 34% 34%; }
+  #earR { transform-origin: 71% 34%; }
+  .eye { position: absolute; width: 12.08%; aspect-ratio: 1; border-radius: 50%; background: #fff; pointer-events: none; }
+  #eyeL { left: 38.70%; top: 41.83%; }
+  #eyeR { left: 57.72%; top: 41.83%; }
   .hit { fill: transparent; cursor: pointer; }
   #status { min-height: 22px; color: var(--muted); font-size: 14px; text-align: center; }
   .controls { width: 100%; max-width: 440px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
@@ -81,91 +84,38 @@
 
 <div id="stage">
   <div id="furby"><div id="bob">
-    <svg viewBox="0 0 400 500" aria-label="Furby">
+    <img id="earL" class="layer" src="img/earL.webp?v=4" alt="">
+    <img id="earR" class="layer" src="img/earR.webp?v=4" alt="">
+    <img id="bodyImg" class="layer" src="img/body.webp?v=4" alt="Furby">
+    <svg viewBox="0 0 447 447" style="pointer-events:none">
       <defs>
-        <filter id="fluff" x="-10%" y="-10%" width="120%" height="120%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.11" numOctaves="2" seed="5" result="n"/>
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G"/>
-        </filter>
-        <filter id="furTex">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9 0.25" numOctaves="2" seed="2" result="t"/>
-          <feColorMatrix in="t" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .22 0" result="a"/>
-          <feComposite in="a" in2="SourceGraphic" operator="in" result="tex"/>
-          <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="tex"/></feMerge>
-        </filter>
-        <radialGradient id="furG" cx="46%" cy="34%" r="72%">
-          <stop offset="0%" stop-color="#3fd3dc"/><stop offset="50%" stop-color="#14a9b5"/><stop offset="100%" stop-color="#0a6f7c"/>
-        </radialGradient>
-        <linearGradient id="earOut" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#7ff3ff"/><stop offset="45%" stop-color="#18b8cc"/><stop offset="100%" stop-color="#0a5f78"/>
-        </linearGradient>
-        <linearGradient id="earIn" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#bff3fa"/>
-        </linearGradient>
-        <radialGradient id="ring" cx="40%" cy="35%" r="70%">
-          <stop offset="0%" stop-color="#e6fdff"/><stop offset="70%" stop-color="#8fe9f2"/><stop offset="100%" stop-color="#3fb6c6"/>
-        </radialGradient>
-        <linearGradient id="beakG" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#ffe14d"/><stop offset="100%" stop-color="#f2b705"/>
-        </linearGradient>
-        <radialGradient id="ball"><stop offset="0%" stop-color="#fff"/><stop offset="55%" stop-color="var(--ant, #ffe45c)"/><stop offset="100%" stop-color="var(--ant, #ffe45c)" stop-opacity="0"/></radialGradient>
+        <radialGradient id="ball"><stop offset="0%" stop-color="#fff"/><stop offset="45%" stop-color="var(--ant, #ffe45c)"/><stop offset="100%" stop-color="var(--ant, #ffe45c)" stop-opacity="0"/></radialGradient>
+        <linearGradient id="jawG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffd21f"/><stop offset="100%" stop-color="#d79a00"/></linearGradient>
       </defs>
-
-      <!-- ears (glossy plastic) -->
-      <g id="earL" style="transform-origin:150px 168px"><g transform="translate(150 168) scale(.86) translate(-150 -168)">
-        <path d="M150 168 C112 140 62 90 54 22 C52 4 70 0 84 12 C130 52 166 104 174 150 z" fill="url(#earOut)" stroke="#0a5a70" stroke-width="3"/>
-        <path d="M150 150 C118 124 80 82 72 34 C72 24 80 22 88 28 C128 64 152 106 160 140 z" fill="url(#earIn)"/>
-        <path d="M66 18 C100 46 130 84 154 128" fill="none" stroke="#ffffff" stroke-opacity=".6" stroke-width="4" stroke-linecap="round"/>
-      </g></g>
-      <g id="earR" style="transform-origin:250px 168px"><g transform="translate(250 168) scale(.86) translate(-250 -168)">
-        <path d="M250 168 C288 140 338 90 346 22 C348 4 330 0 316 12 C270 52 234 104 226 150 z" fill="url(#earOut)" stroke="#0a5a70" stroke-width="3"/>
-        <path d="M250 150 C282 124 320 82 328 34 C328 24 320 22 312 28 C272 64 248 106 240 140 z" fill="url(#earIn)"/>
-        <path d="M334 18 C300 46 270 84 246 128" fill="none" stroke="#ffffff" stroke-opacity=".6" stroke-width="4" stroke-linecap="round"/>
-      </g></g>
-      <!-- tail -->
-      <path d="M322 420 q50 -6 60 -52 q10 40 -28 76 z" fill="url(#furG)" filter="url(#fluff)"/>
-      <!-- antenna -->
-      <line x1="200" y1="128" x2="200" y2="66" stroke="#9fe8f0" stroke-width="5" stroke-linecap="round"/>
-      <circle id="antGlow" cx="200" cy="56" r="26" fill="url(#ball)" opacity=".8"/>
-      <circle cx="200" cy="56" r="11" fill="var(--ant, #ffe45c)" stroke="#fff6b0" stroke-width="2"/>
-      <!-- body -->
-      <g filter="url(#furTex)">
-        <ellipse cx="200" cy="300" rx="152" ry="180" fill="url(#furG)" filter="url(#fluff)"/>
-        <ellipse cx="200" cy="385" rx="88" ry="78" fill="#2cc3cd" opacity=".45" filter="url(#fluff)"/>
-      </g>
-      <!-- forehead badge -->
-      <path d="M200 150 C214 162 222 172 222 182 C222 194 212 200 200 200 C188 200 178 194 178 182 C178 172 186 162 200 150 z" fill="#0d5d6e" stroke="#8fe9f2" stroke-width="4"/>
-      <!-- eye rings -->
-      <circle cx="145" cy="232" r="52" fill="url(#ring)" stroke="#2a9fb0" stroke-width="3"/>
-      <circle cx="255" cy="232" r="52" fill="url(#ring)" stroke="#2a9fb0" stroke-width="3"/>
-      <circle cx="145" cy="232" r="41" fill="#0b2433"/>
-      <circle cx="255" cy="232" r="41" fill="#0b2433"/>
-      <!-- beak -->
-      <path id="beakLow" d="M186 302 Q200 322 214 302 z" fill="#d9480f"/>
-      <path d="M180 292 Q200 276 220 292 Q212 308 200 310 Q188 308 180 292 z" fill="url(#beakG)" stroke="#c99300" stroke-width="2"/>
-      <!-- feet -->
-      <ellipse cx="148" cy="474" rx="40" ry="17" fill="#0b4f5e"/>
-      <ellipse cx="252" cy="474" rx="40" ry="17" fill="#0b4f5e"/>
-
-      <!-- touch areas (invisible) -->
-      <path class="hit" data-part="tail" d="M318 380 L392 352 L392 450 L322 462 z"/>
-      <path class="hit" data-part="head" d="M20 0 L380 0 L330 172 L70 172 z"/>
-      <ellipse class="hit" data-part="belly" cx="200" cy="392" rx="100" ry="85"/>
-      <path class="hit" data-part="back" d="M48 250 L88 250 L118 330 L108 470 L62 430 L44 330 z"/>
-      <path class="hit" data-part="back" d="M352 250 L312 250 L282 330 L292 470 L338 430 L356 330 z"/>
-      <rect class="hit" data-part="face" x="88" y="172" width="224" height="150" rx="60"/>
+      <circle cx="235" cy="91" r="20" fill="url(#ball)" opacity=".85"/>
+      <!-- lower beak: covers the open mouth in the photo, drops when he talks -->
+      <ellipse id="jaw" cx="243" cy="268" rx="16" ry="9" fill="url(#jawG)"/>
     </svg>
     <canvas class="eye" id="eyeL" width="128" height="128"></canvas>
     <canvas class="eye" id="eyeR" width="128" height="128"></canvas>
-    <svg viewBox="0 0 400 500" style="pointer-events:none">
+    <svg viewBox="0 0 447 447" style="pointer-events:none">
       <g id="mask" style="transform: translateY(-260px); opacity:0; transition: transform .5s cubic-bezier(.3,1.3,.5,1), opacity .3s">
-        <path d="M70 212 C88 160 312 160 330 212 C340 258 312 300 266 292 C234 286 224 266 200 266 C176 266 166 286 134 292 C88 300 60 258 70 212 z" fill="#7b4fd6" stroke="#4c2d91" stroke-width="5"/>
-        <path d="M112 240 q30 22 60 0" fill="none" stroke="#f6ecff" stroke-width="6" stroke-linecap="round"/>
-        <path d="M228 240 q30 22 60 0" fill="none" stroke="#f6ecff" stroke-width="6" stroke-linecap="round"/>
-        <text x="200" y="210" font-size="20" font-weight="700" fill="#ffd46b" text-anchor="middle" font-family="system-ui,sans-serif">z z z</text>
-        <path d="M68 222 C42 206 40 182 60 172" fill="none" stroke="#4c2d91" stroke-width="7"/>
-        <path d="M332 222 C358 206 360 182 340 172" fill="none" stroke="#4c2d91" stroke-width="7"/>
+        <path d="M140 196 C150 158 336 158 346 196 C356 240 330 268 296 262 C266 257 258 240 243 240 C228 240 220 257 190 262 C156 268 130 240 140 196 z" fill="#7b4fd6" stroke="#4c2d91" stroke-width="5"/>
+        <path d="M176 220 q24 18 48 0" fill="none" stroke="#f6ecff" stroke-width="5" stroke-linecap="round"/>
+        <path d="M262 220 q24 18 48 0" fill="none" stroke="#f6ecff" stroke-width="5" stroke-linecap="round"/>
+        <text x="243" y="192" font-size="16" font-weight="700" fill="#ffd46b" text-anchor="middle" font-family="system-ui,sans-serif">z z z</text>
+        <path d="M138 204 C116 192 114 172 130 162" fill="none" stroke="#4c2d91" stroke-width="6"/>
+        <path d="M348 204 C370 192 372 172 356 162" fill="none" stroke="#4c2d91" stroke-width="6"/>
       </g>
+    </svg>
+    <svg viewBox="0 0 447 447">
+      <path class="hit" data-part="head" d="M150 60 L330 60 L345 175 L140 175 z"/>
+      <path class="hit" data-part="head" d="M10 20 L170 20 L175 160 L20 175 z"/>
+      <path class="hit" data-part="head" d="M437 20 L280 20 L275 160 L427 175 z"/>
+      <ellipse class="hit" data-part="belly" cx="238" cy="340" rx="80" ry="58"/>
+      <path class="hit" data-part="back" d="M112 230 L165 250 L165 400 L125 380 L108 300 z"/>
+      <path class="hit" data-part="back" d="M362 230 L315 250 L315 400 L355 380 L368 300 z"/>
+      <rect class="hit" data-part="face" x="150" y="175" width="190" height="110" rx="40"/>
     </svg>
     <div id="ripple"></div>
   </div></div>
@@ -179,9 +129,10 @@
   <button data-act="SHAKE">🌀 Shake</button>
   <button data-act="UPSIDE">🙃 Upside down</button>
   <button data-act="SING">🎵 Sing</button>
-  <button class="wide mask" id="maskBtn">😴 Put sleep mask on</button>
+  <button data-act="TAIL">🐾 Pull tail</button>
+  <button class="mask" id="maskBtn" style="grid-column: span 2">😴 Put sleep mask on</button>
 </div>
-<p class="hint">Tap his head to pet him, tickle his belly, stroke his sides, or pull his tail. On a phone you can shake it too.</p>
+<p class="hint">Tap his head or ears to pet him, tickle his belly, or stroke his sides. On a phone you can shake it too.</p>
 
 <div class="panel">
   <h2>Test a DLC</h2>
@@ -200,12 +151,12 @@
   <p>Turn your sound on. Furby's eyes and voice load from the internet, so the first few moves can take a second.</p>
 </div>
 
-<script src="furby.js"></script>
+<script src="furby.js?v=3"></script>
 <script>
 (() => {
   const { Furby, ACT } = window.FurbySim;
   const $ = s => document.querySelector(s);
-  const furbyEl = $('#furby'), earL = $('#earL'), earR = $('#earR'), beakLow = $('#beakLow'), bobEl = $('#bob');
+  const furbyEl = $('#furby'), earL = $('#earL'), earR = $('#earR'), jaw = $('#jaw'), bobEl = $('#bob');
   let level = 0, nudge = 0;
 
   // The motor: one cam drives ears, body tilt and beak, like the real toy.
@@ -239,13 +190,13 @@
     nudge *= 0.9;
     const talk = Math.min(1, level * 1.6);
     const sleep = furby.asleep ? 1 : 0;
-    const earCam = Math.sin(ph * Math.PI) * 16;      // ears fold back half way round the cam
+    const earCam = Math.sin(ph * Math.PI) * 14;      // ears fold back half way round the cam
     const earBase = sleep ? 26 : 0;
     const wig = Math.sin(s * 9) * talk * 6 + Math.sin(s * 1.3) * 1.5 + nudge * Math.sin(s * 40) * 6;
     earL.style.transform = `rotate(${-earBase - earCam - wig}deg)`;
     earR.style.transform = `rotate(${earBase + earCam + wig}deg)`;
-    const open = talk * 16 + Math.max(0, Math.sin(ph * Math.PI * 2)) * 6;
-    beakLow.setAttribute('d', `M186 302 Q200 ${322 + open} 214 302 z`);
+    const open = talk * 16 + Math.max(0, Math.sin(ph * Math.PI * 2)) * 5;
+    jaw.setAttribute("cy", 268 + open * 0.6);
     const lean = Math.sin(ph * Math.PI * 2) * 4;     // body rocks back and forth with the cam
     const bob = Math.sin(s * (sleep ? 1.2 : 2)) * (sleep ? 3 : 1.5) + talk * Math.sin(s * 14) * 2;
     const tilt = lean + nudge * Math.sin(s * 30) * 2;
