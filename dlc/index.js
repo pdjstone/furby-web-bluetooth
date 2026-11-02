@@ -1,5 +1,20 @@
 [
     {
+        "file": "hands.dlc",
+        "title": "Sissy boy hands",
+        "buttons": [
+            {
+                "title": "sissy boy hands",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
         "file": "phone.dlc",
         "title": "Phone ringing",
         "buttons": [
