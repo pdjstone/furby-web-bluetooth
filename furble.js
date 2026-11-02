@@ -434,13 +434,16 @@ function uploadDLC(dlcbuf, filename, progresscb) {
             }
             let chunk = dlcbuf.slice(sendPos, sendPos + CHUNK_SIZE);
             if (chunk.byteLength > 0) {
-                furby_chars.FileWrite.writeValue(chunk).then(() => {
+                let fw = furby_chars.FileWrite;
+                let write = (fw.properties.writeWithoutResponse && fw.writeValueWithoutResponse)
+                    ? fw.writeValueWithoutResponse(chunk) : fw.writeValue(chunk);
+                write.then(() => {
                     lastCommandSent = performance.now();
                     sendPos += chunk.byteLength;
                     if (progresscb)
                         progresscb(sendPos, size, maxRx);
                     if (sendPos < size)
-                        setTimeout(transferNextChunk, 1);
+                        transferNextChunk(); // no 1 ms timer: browsers stretch it to 4 ms+, which slowed uploads a lot
                     else {
                         log('Sent final packet');
                         // If the Furby never confirms, carry on after a while anyway;
