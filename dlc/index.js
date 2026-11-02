@@ -1,5 +1,20 @@
 [
     {
+        "file": "loki.dlc",
+        "title": "Loki edit",
+        "buttons": [
+            {
+                "title": "loki",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
         "file": "rickqr.dlc",
         "title": "Rickroll QR v2",
         "buttons": [
