@@ -1,5 +1,20 @@
 [
     {
+        "file": "phone.dlc",
+        "title": "Phone ringing",
+        "buttons": [
+            {
+                "title": "phone ringing",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
         "file": "catintro.dlc",
         "title": "Cat intro (orange)",
         "buttons": [
