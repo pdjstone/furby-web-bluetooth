@@ -30,11 +30,11 @@
         ]
     },
     {
-        "file": "sean1.dlc",
-        "title": "Sean edit",
+        "file": "seany.dlc",
+        "title": "Seany weeny edit",
         "buttons": [
             {
-                "title": "sean",
+                "title": "seany weeny",
                 "action": [
                     75,
                     0,
