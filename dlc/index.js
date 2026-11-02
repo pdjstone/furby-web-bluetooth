@@ -1,5 +1,20 @@
 [
     {
+        "file": "rickqr.dlc",
+        "title": "Rickroll QR",
+        "buttons": [
+            {
+                "title": "rickroll",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
         "file": "bird.dlc",
         "title": "Meep meep bird",
         "buttons": [
