@@ -1,7 +1,7 @@
 [
     {
         "file": "rickqr.dlc",
-        "title": "Rickroll QR",
+        "title": "Rickroll QR v2",
         "buttons": [
             {
                 "title": "rickroll",
