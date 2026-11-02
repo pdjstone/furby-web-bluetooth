@@ -1,5 +1,20 @@
 [
     {
+        "file": "eyepink.dlc",
+        "title": "Pink eyes (20 s)",
+        "buttons": [
+            {
+                "title": "pink eyes",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
         "file": "spidey.dlc",
         "title": "Spider-Man polyester edit",
         "buttons": [
