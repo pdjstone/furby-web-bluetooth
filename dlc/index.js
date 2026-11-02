@@ -1,5 +1,20 @@
 [
     {
+        "file": "orngtest.dlc",
+        "title": "TEST: orange eyes (experimental)",
+        "buttons": [
+            {
+                "title": "test",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
         "file": "eyepink.dlc",
         "title": "Pink eyes (20 s)",
         "buttons": [
