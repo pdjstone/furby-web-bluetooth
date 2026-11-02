@@ -1,5 +1,20 @@
 [
     {
+        "file": "orange.dlc",
+        "title": "Orange eyes on his reactions",
+        "buttons": [
+            {
+                "title": "Test: orange eyes",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    1
+                ]
+            }
+        ]
+    },
+    {
         "file": "basetest.dlc",
         "title": "TEST: built-in reaction",
         "buttons": [
