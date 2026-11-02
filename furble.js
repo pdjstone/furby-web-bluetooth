@@ -254,9 +254,18 @@ function deleteDLC(slot) {
 }
 
 async function deleteAllDLCSlots() {
+    // Only touch slots that actually hold a DLC, and never let a slow
+    // reply from the Furby stop the upload from going ahead.
+    let slots = null;
+    try {
+        slots = await getDLCInfo();
+    } catch (e) {
+        log('Could not read DLC slots, clearing all of them: ' + (e && e.message ? e.message : e));
+    }
     for (let i=0; i<14; i++) {
-        await deactivateDLC(i);
-        await deleteDLC(i);
+        if (slots && slots[i] == SLOT_EMPTY) continue;
+        try { await deactivateDLC(i); } catch (e) { log(`slot ${i}: deactivate got no reply, carrying on`); }
+        try { await deleteDLC(i); } catch (e) { log(`slot ${i}: delete got no reply, carrying on`); }
     }
 }
 
