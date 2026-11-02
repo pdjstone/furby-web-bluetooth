@@ -1,5 +1,20 @@
 [
     {
+        "file": "spidey.dlc",
+        "title": "Spider-Man polyester edit",
+        "buttons": [
+            {
+                "title": "spidey",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
         "file": "loki.dlc",
         "title": "Loki edit",
         "buttons": [
