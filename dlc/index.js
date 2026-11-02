@@ -1,5 +1,20 @@
 [
     {
+        "file": "bird.dlc",
+        "title": "Meep meep bird",
+        "buttons": [
+            {
+                "title": "meep meep",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
         "file": "hands.dlc",
         "title": "Sissy boy hands",
         "buttons": [
