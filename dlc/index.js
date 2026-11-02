@@ -30,11 +30,26 @@
         ]
     },
     {
-        "file": "sean.dlc",
-        "title": "Sean edit",
+        "file": "sean1.dlc",
+        "title": "Sean edit (part 1)",
         "buttons": [
             {
-                "title": "sean",
+                "title": "sean 1",
+                "action": [
+                    75,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        ]
+    },
+    {
+        "file": "sean2.dlc",
+        "title": "Sean edit (part 2)",
+        "buttons": [
+            {
+                "title": "sean 2",
                 "action": [
                     75,
                     0,
