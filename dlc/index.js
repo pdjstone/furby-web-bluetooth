@@ -1,7 +1,7 @@
 [
     {
-        "file": "orange2.dlc",
-        "title": "Orange eyes on his reactions v2",
+        "file": "orange3.dlc",
+        "title": "Orange eyes on his reactions v3",
         "buttons": [
             {
                 "title": "Test: orange eyes",
