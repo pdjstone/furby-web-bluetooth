@@ -62,29 +62,60 @@ function log() {
     o.scrollTop = o.scrollHeight;
 }
 
-function sendGPCmd(data, response_prefix) {
+// Sends a command to the Furby. If a reply is expected and none arrives
+// within GP_TIMEOUT_MS, the command is sent again (the Furby sometimes
+// ignores commands, e.g. right after a DLC upload while it saves the file).
+const GP_TIMEOUT_MS = 2000;
+const GP_MAX_TRIES = 5;
+function sendGPCmd(data, response_prefix, timeoutMs = GP_TIMEOUT_MS, maxTries = GP_MAX_TRIES) {
     return new Promise((resolve, reject) => {
         if (data.length != 2 && data[0] != 0x20 && data[1] != 0x06)
             log('Sending data to GeneralPlusWrite', buf2hex(data));
         var hnd;
+        var timer = null;
+        var tries = 0;
+        var done = false;
+        let finish = (fn, val) => {
+            if (done) return;
+            done = true;
+            if (timer) clearTimeout(timer);
+            if (hnd !== undefined) removeGPListenCallback(hnd);
+            fn(val);
+        };
         if (response_prefix != NO_RESPONSE) {
-            hnd = addGPListenCallback(response_prefix, buf => {
-                removeGPListenCallback(hnd);
-                resolve(buf);
-            });
+            hnd = addGPListenCallback(response_prefix, buf => finish(resolve, buf));
         }
-        lastCommandSent = performance.now();
-        furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(data))
-            .then(() => {
-                
-                // if we're not expecting a response resolve once the data's been sent
-                if (response_prefix == NO_RESPONSE) 
-                    resolve();
-            }).catch(error => {
-                if (response_prefix != NO_RESPONSE)
-                    removeGPListenCallback(hnd);
-                reject(error);
-            });
+        let send = () => {
+            if (done) return;
+            tries++;
+            lastCommandSent = performance.now();
+            furby_chars.GeneralPlusWrite.writeValue(new Uint8Array(data))
+                .then(() => {
+                    // if we're not expecting a response resolve once the data's been sent
+                    if (response_prefix == NO_RESPONSE) {
+                        finish(resolve);
+                        return;
+                    }
+                    if (done) return;
+                    timer = setTimeout(() => {
+                        if (done) return;
+                        if (tries >= maxTries) {
+                            finish(reject, new Error('No reply from Furby to command ' + buf2hex(data)));
+                        } else {
+                            log('No reply yet, resending', buf2hex(data));
+                            send();
+                        }
+                    }, timeoutMs);
+                }).catch(error => {
+                    // Bluetooth busy: wait a moment and try again
+                    if (!done && tries < maxTries) {
+                        setTimeout(send, 200);
+                    } else {
+                        finish(reject, error);
+                    }
+                });
+        };
+        send();
     });
 }
 
@@ -146,12 +177,15 @@ function customAction() {
 function enableEyes(b) {
     return sendGPCmd([0xcd, b ? 1 : 0], NO_RESPONSE);
 }
+// Loading a big DLC can take the Furby a long time, and resending the
+// command while it is still loading only starts it over. So wait up to
+// 45 s for one reply instead of resending every 2 s.
 function loadDLC(slot) {
-    return sendGPCmd([0x60, slot], [0xdc]);
+    return sendGPCmd([0x60, slot], [0xdc], 45000, 1);
 }
 
 function activateDLC() {
-    return sendGPCmd([0x61], [0xdc]);
+    return sendGPCmd([0x61], [0xdc], 20000, 2);
 }
 
 function deactivateDLC(slot) {
@@ -223,9 +257,18 @@ function deleteDLC(slot) {
 }
 
 async function deleteAllDLCSlots() {
+    // Only touch slots that actually hold a DLC, and never let a slow
+    // reply from the Furby stop the upload from going ahead.
+    let slots = null;
+    try {
+        slots = await getDLCInfo();
+    } catch (e) {
+        log('Could not read DLC slots, clearing all of them: ' + (e && e.message ? e.message : e));
+    }
     for (let i=0; i<14; i++) {
-        await deactivateDLC(i);
-        await deleteDLC(i);
+        if (slots && slots[i] == SLOT_EMPTY) continue;
+        try { await deactivateDLC(i); } catch (e) { log(`slot ${i}: deactivate got no reply, carrying on`); }
+        try { await deleteDLC(i); } catch (e) { log(`slot ${i}: delete got no reply, carrying on`); }
     }
 }
 
@@ -273,7 +316,7 @@ function makeDLCFilename(dlcurl) {
 }
 
 async function fetchAndUploadDLC(dlcurl) {
-    let response = await fetch(dlcurl);
+    let response = await fetch(dlcurl, {cache: 'no-store'});
     if (response.status != 200) {
         throw new Error('Failed to fetch DLC', dlcurl);
         msg.error('DLC not found on server');
@@ -289,8 +332,9 @@ async function fetchAndUploadDLC(dlcurl) {
         progress.style.display = 'block';
         progress.removeAttribute('value');
         let c = 0;
-        //log('Clearing all DLC slots...');
-        //await deleteAllDLCSlots();
+        log('Clearing all DLC slots...');
+        msg.ok('Clearing old DLCs off the Furby...');
+        await deleteAllDLCSlots();
         await enableEyes(false); // eyes off, save battery
         await setAntennaColor(0,0,0);
         let name = makeDLCFilename(dlcurl);
@@ -308,7 +352,7 @@ async function fetchAndUploadDLC(dlcurl) {
         });
         msg.ok('DLC uploaded!');
     } catch (e) {
-        msg.error('DLC upload failed :(');
+        msg.error('DLC upload failed :( ' + (e && e.message ? e.message : e));
         log(e.message);
         console.error(e);
         await setAntennaColor(255,0,0);
@@ -319,6 +363,8 @@ async function fetchAndUploadDLC(dlcurl) {
     }
 
     try { 
+        msg.ok('DLC uploaded! Activating...');
+        await sleep(1500); // let the Furby finish saving the file
         let slots = await getDLCInfo();
         let filledSlot = slots.indexOf(SLOT_FILLED);
         let activeSlot = slots.indexOf(SLOT_ACTIVE);
@@ -343,7 +389,7 @@ async function fetchAndUploadDLC(dlcurl) {
         msg.ok('DLC activated!');
         await setAntennaColor(0,255,0);
     } catch (e) {
-        msg.error('DLC activation failed :(');
+        msg.error('DLC activation failed :( ' + e.message);
         log(e.message);
         console.log(e);
         await setAntennaColor(255,0,0);
@@ -400,19 +446,33 @@ function uploadDLC(dlcbuf, filename, progresscb) {
             }
             let chunk = dlcbuf.slice(sendPos, sendPos + CHUNK_SIZE);
             if (chunk.byteLength > 0) {
-                furby_chars.FileWrite.writeValue(chunk).then(() => {
+                let fw = furby_chars.FileWrite;
+                let write = (fw.properties.writeWithoutResponse && fw.writeValueWithoutResponse)
+                    ? fw.writeValueWithoutResponse(chunk) : fw.writeValue(chunk);
+                write.then(() => {
                     lastCommandSent = performance.now();
                     sendPos += chunk.byteLength;
                     if (progresscb)
                         progresscb(sendPos, size, maxRx);
                     if (sendPos < size)
-                        setTimeout(transferNextChunk, 1);
-                    else 
+                        transferNextChunk(); // no 1 ms timer: browsers stretch it to 4 ms+, which slowed uploads a lot
+                    else {
                         log('Sent final packet');
+                        // If the Furby never confirms, carry on after a while anyway;
+                        // the checksum check afterwards will catch a bad upload.
+                        setTimeout(() => {
+                            if (!isTransferring) return;
+                            log('No upload confirmation from Furby, carrying on');
+                            isTransferring = false;
+                            removeGPListenCallback(hnd);
+                            setNordicNotifications(false);
+                            resolve();
+                        }, 10000);
+                    }
                 }).catch(error => {
                     //removeGPListenCallback(hnd)
                     console.log(error);
-                    if (++failedWrites > 3) {
+                    if (++failedWrites <= 3) {
                         log('FileWrite.writeValue failed, will retry');
                         setTimeout(transferNextChunk, 16);
                     } else {

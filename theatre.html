@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Furby Theatre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700&display=swap">
+<style>
+/* Layout: one stage (video + countdown canvas) on top, show controls and the cue sheet below. */
+:root {
+  --bg: #1b1426;
+  --panel: #271d36;
+  --line: #3b2d50;
+  --fg: #f6eefc;
+  --muted: #b9a8cf;
+  --pink: #ff7fc4;
+  --blue: #7cc8ff;
+  --lilac: #c69cff;
+  --ok: #7ee2a8;
+  --bad: #ff8a8a;
+  --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 40px;
+}
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; }
+h1 { font-family: var(--display); font-weight: 800; font-size: 30px; margin: 0; line-height: 1; letter-spacing: .01em; }
+h1 span { color: var(--pink); }
+h2 { font-family: var(--display); font-size: 20px; margin: 0; }
+.status { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 600; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); }
+.status.on .dot { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+button, select, input, label.file {
+  font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 9px 14px; min-height: 40px;
+}
+button, label.file { cursor: pointer; font-weight: 700; }
+button:hover:not(:disabled), label.file:hover { border-color: var(--lilac); }
+button:focus-visible, select:focus-visible, input:focus-visible, label.file:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: var(--pink); color: #2a0f20; border-color: var(--pink); }
+button.connect { background: var(--blue); color: #0d2233; border-color: var(--blue); }
+label.file input { display: none; }
+
+.stage {
+  position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden;
+  background: #000; border: 1px solid var(--line);
+}
+.stage video, .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stage video { object-fit: contain; background: #000; }
+.stage canvas { pointer-events: none; }
+.stage .hint {
+  position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-weight: 700;
+  color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.5); padding: 0 16px;
+}
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.bar .grow { flex: 1 1 200px; min-width: 0; }
+.time { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 700; }
+input[type=range] { padding: 0; min-height: 0; width: 100%; accent-color: var(--pink); background: none; border: 0; }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel p { margin: 0; color: var(--muted); line-height: 1.5; max-width: 70ch; }
+.adder { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.adder input[type=number] { width: 64px; padding: 9px 6px; text-align: center; }
+.adder input[type=color] { width: 48px; padding: 4px; }
+.custom[hidden], .colour[hidden] { display: none !important; }
+.custom, .colour { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+tr.fired td { color: var(--muted); }
+tr.next td:first-child { color: var(--pink); font-weight: 800; }
+td button { min-height: 32px; padding: 4px 10px; }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin-right: 6px; border: 1px solid rgba(255,255,255,.3); }
+.empty { color: var(--muted); padding: 14px 10px; }
+.tag { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
+#log { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); max-height: 120px; overflow: auto; white-space: pre-wrap; margin: 0; }
+.nobt { background: #3a1d2a; border: 1px solid var(--bad); border-radius: 12px; padding: 12px 14px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Furby <span>Theatre</span></h1>
+    <div class="bar">
+      <span class="status" id="status"><span class="dot"></span><span id="statusText">Furby not connected</span></span>
+      <button class="connect" id="connectBtn">Connect Furby</button>
+    </div>
+  </header>
+
+  <div class="nobt" id="noBt" hidden>This browser can't talk to a Furby over Bluetooth. Open this page in Chrome on Android, Windows, Mac or a Chromebook. You can still build a show here and watch the countdown.</div>
+
+  <div class="stage" id="stage">
+    <video id="video" playsinline preload="auto"></video>
+    <canvas id="fx"></canvas>
+    <div class="hint" id="hint">Load a video, add some reactions, then press Start show.</div>
+  </div>
+
+  <div class="bar">
+    <label class="file">Load video<input type="file" id="videoFile" accept="video/*,audio/*"></label>
+    <button class="primary" id="startBtn">Start show</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="countBtn">Just the countdown</button>
+    <span class="time" id="time">0:00.0 / 0:00.0</span>
+    <div class="grow"><input type="range" id="seek" min="0" max="1000" value="0" aria-label="Video position"></div>
+  </div>
+
+  <section class="panel">
+    <div class="bar" style="justify-content:space-between">
+      <h2>Reactions</h2>
+      <span class="tag" id="cueSource">Example show</span>
+    </div>
+    <p>Each reaction fires on your Furby at its time in the video. Play the video, and press <b>Add at current time</b> when you want the Furby to react. Reactions save in this browser for each video.</p>
+    <div class="adder">
+      <select id="reaction" aria-label="Reaction"></select>
+      <span class="custom" id="customBox" hidden>
+        <input type="number" id="c0" min="0" max="255" value="39" aria-label="Input">
+        <input type="number" id="c1" min="0" max="255" value="3" aria-label="Index">
+        <input type="number" id="c2" min="0" max="255" value="8" aria-label="Subindex">
+        <input type="number" id="c3" min="0" max="255" value="1" aria-label="Specific">
+      </span>
+      <span class="colour" id="colourBox" hidden><input type="color" id="colour" value="#ff7fc4" aria-label="Antenna colour"></span>
+      <button id="addBtn">Add at current time</button>
+      <button id="testBtn">Try it now</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Time</th><th>Reaction</th><th>Sends</th><th></th></tr></thead>
+        <tbody id="cues"></tbody>
+      </table>
+    </div>
+    <div class="bar">
+      <label for="offset" class="time">Send early by</label>
+      <input type="number" id="offset" min="0" max="2000" step="50" value="150" style="width:90px"> <span class="time">ms</span>
+      <span class="grow"></span>
+      <button id="saveBtn">Save show file</button>
+      <label class="file">Open show file<input type="file" id="showFile" accept=".json,application/json"></label>
+      <button id="clearBtn">Clear all</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Log</h2>
+    <pre id="log"></pre>
+  </section>
+</div>
+
+<script>
+// ---------------------------------------------------------------- Furby Bluetooth
+const FLUFF_SERVICE = 'dab91435-b5a1-e29c-b041-bcd562613bde';
+const GP_WRITE = 'dab91383-b5a1-e29c-b041-bcd562613bde';
+const GP_LISTEN = 'dab91382-b5a1-e29c-b041-bcd562613bde';
+
+const furby = {
+  device: null, write: null, connected: false, queue: Promise.resolve(), lastSend: 0, keepAlive: null,
+  async connect() {
+    this.device = await navigator.bluetooth.requestDevice({ filters: [{ name: 'Furby' }], optionalServices: [FLUFF_SERVICE] });
+    this.device.addEventListener('gattserverdisconnected', () => this.onDisconnect());
+    const server = await this.device.gatt.connect();
+    const service = await server.getPrimaryService(FLUFF_SERVICE);
+    this.write = await service.getCharacteristic(GP_WRITE);
+    const listen = await service.getCharacteristic(GP_LISTEN);
+    await listen.startNotifications();
+    this.connected = true;
+    this.keepAlive = setInterval(() => {
+      if (performance.now() - this.lastSend > 3000) this.send([0x20, 0x06], true);
+    }, 1000);
+  },
+  disconnect() { if (this.device && this.device.gatt.connected) this.device.gatt.disconnect(); },
+  onDisconnect() {
+    this.connected = false; clearInterval(this.keepAlive);
+    log('Furby disconnected. If this keeps happening, the batteries may be low.');
+    updateStatus();
+  },
+  // Writes go one at a time; Web Bluetooth rejects overlapping writes.
+  send(bytes, quiet) {
+    if (!this.connected) return Promise.resolve();
+    this.lastSend = performance.now();
+    this.queue = this.queue.then(() => this.write.writeValue(new Uint8Array(bytes)))
+      .catch(e => log('Send failed: ' + e.message));
+    if (!quiet) log('→ ' + bytes.map(b => b.toString(16).padStart(2, '0')).join(' '));
+    return this.queue;
+  },
+  action(a, b, c, d) { return this.send([0x13, 0, a, b, c, d]); },
+  antenna(r, g, b) { return this.send([0x14, r, g, b]); },
+};
+
+// ---------------------------------------------------------------- Reactions
+// Action numbers are the Furby's own built-in sequences, as used by FurBLE.
+// "DLC slot" reactions are input 75, which plays sounds from a DLC you have uploaded.
+const REACTIONS = [
+  { id: 'legendary', label: 'Legendary!', act: [39, 3, 8, 1] },
+  { id: 'nice', label: 'Nice', act: [39, 4, 6, 1] },
+  { id: 'heyhey', label: 'Hey, hey', act: [39, 3, 1, 1] },
+  { id: 'dlc0', label: 'DLC slot 1', act: [75, 0, 0, 0] },
+  { id: 'dlc1', label: 'DLC slot 2', act: [75, 0, 0, 1] },
+  { id: 'dlc2', label: 'DLC slot 3', act: [75, 0, 0, 2] },
+  { id: 'dlc3', label: 'DLC slot 4', act: [75, 0, 0, 3] },
+  { id: 'colour', label: 'Antenna colour' },
+  { id: 'custom', label: 'Custom action…' },
+];
+const reactionSel = document.getElementById('reaction');
+REACTIONS.forEach(r => reactionSel.add(new Option(r.label, r.id)));
+
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+
+function cueFromForm() {
+  const r = REACTIONS.find(x => x.id === reactionSel.value);
+  if (r.id === 'colour') return { kind: 'colour', label: 'Antenna colour', colour: document.getElementById('colour').value };
+  if (r.id === 'custom') {
+    const act = ['c0', 'c1', 'c2', 'c3'].map(id => Math.max(0, Math.min(255, +document.getElementById(id).value || 0)));
+    return { kind: 'action', label: 'Custom', act };
+  }
+  return { kind: 'action', label: r.label, act: r.act.slice() };
+}
+function fireCue(c) {
+  if (c.kind === 'colour') furby.antenna(...hexToRgb(c.colour));
+  else furby.action(...c.act);
+}
+reactionSel.addEventListener('change', () => {
+  document.getElementById('customBox').hidden = reactionSel.value !== 'custom';
+  document.getElementById('colourBox').hidden = reactionSel.value !== 'colour';
+});
+
+// ---------------------------------------------------------------- Show state
+const video = document.getElementById('video');
+let videoName = null;
+let cues = [];
+const EXAMPLE = [
+  { t: 1.0, kind: 'colour', label: 'Antenna colour', colour: '#7cc8ff' },
+  { t: 2.5, kind: 'action', label: 'Hey, hey', act: [39, 3, 1, 1] },
+  { t: 6.0, kind: 'action', label: 'Nice', act: [39, 4, 6, 1] },
+  { t: 9.5, kind: 'colour', label: 'Antenna colour', colour: '#ff7fc4' },
+  { t: 12.0, kind: 'action', label: 'Legendary!', act: [39, 3, 8, 1] },
+];
+let fired = new Set();
+
+function storeKey() { return 'furby-theatre:' + (videoName || 'example'); }
+function saveLocal() { try { localStorage.setItem(storeKey(), JSON.stringify(cues)); } catch (e) {} }
+function loadLocal() {
+  try { const s = localStorage.getItem(storeKey()); if (s) return JSON.parse(s); } catch (e) {}
+  return null;
+}
+
+function fmt(t) {
+  if (!isFinite(t)) t = 0;
+  const m = Math.floor(t / 60), s = t - m * 60;
+  return m + ':' + s.toFixed(1).padStart(4, '0');
+}
+function sendsText(c) { return c.kind === 'colour' ? 'colour ' + c.colour : 'action ' + c.act.join(' / '); }
+
+const tbody = document.getElementById('cues');
+function renderCues() {
+  cues.sort((a, b) => a.t - b.t);
+  tbody.innerHTML = '';
+  if (!cues.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">No reactions yet. Play the video and press Add at current time.</td></tr>';
+    return;
+  }
+  const now = video.currentTime || 0;
+  let nextMarked = false;
+  cues.forEach((c, i) => {
+    const tr = document.createElement('tr');
+    if (fired.has(c)) tr.className = 'fired';
+    else if (!nextMarked && c.t >= now) { tr.className = 'next'; nextMarked = true; }
+    const sw = c.kind === 'colour' ? `<span class="swatch" style="background:${c.colour}"></span>` : '';
+    tr.innerHTML = `<td>${fmt(c.t)}</td><td>${sw}${c.label}</td><td class="time">${sendsText(c)}</td>
+      <td><button data-i="${i}" data-do="go">Jump</button> <button data-i="${i}" data-do="del" aria-label="Delete">✕</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+tbody.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const c = cues[+b.dataset.i];
+  if (b.dataset.do === 'del') { cues.splice(+b.dataset.i, 1); markEdited(); }
+  else if (video.src) { video.currentTime = Math.max(0, c.t - 1); resetFired(); }
+});
+function markEdited() { saveLocal(); document.getElementById('cueSource').textContent = videoName ? 'Saved for ' + videoName : 'Saved in this browser'; renderCues(); }
+function resetFired() { const t = video.currentTime; fired = new Set(cues.filter(c => c.t < t)); renderCues(); }
+
+document.getElementById('addBtn').onclick = () => {
+  const c = cueFromForm(); c.t = Math.round((video.currentTime || 0) * 10) / 10;
+  cues.push(c); if (c.t <= video.currentTime) fired.add(c);
+  markEdited(); fireCue(c);
+};
+document.getElementById('testBtn').onclick = () => fireCue(cueFromForm());
+document.getElementById('clearBtn').onclick = () => { cues = []; fired.clear(); markEdited(); };
+
+// Show files: download / open as JSON.
+document.getElementById('saveBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify({ video: videoName, cues }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (videoName ? videoName.replace(/\.[^.]+$/, '') : 'furby-show') + '.show.json';
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+document.getElementById('showFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    cues = (data.cues || data).filter(c => typeof c.t === 'number');
+    resetFired(); markEdited(); log('Opened show ' + f.name + ' with ' + cues.length + ' reactions.');
+  } catch (err) { log('That file is not a Furby Theatre show: ' + err.message); }
+  e.target.value = '';
+};
+
+// ---------------------------------------------------------------- Video
+const hint = document.getElementById('hint');
+const seek = document.getElementById('seek');
+document.getElementById('videoFile').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  if (video.src) URL.revokeObjectURL(video.src);
+  video.src = URL.createObjectURL(f);
+  videoName = f.name;
+  cues = loadLocal() || [];
+  document.getElementById('cueSource').textContent = cues.length ? 'Saved for ' + videoName : 'New show for ' + videoName;
+  fired.clear(); renderCues();
+  hint.textContent = 'Press Start show for the countdown.';
+  log('Loaded ' + f.name);
+};
+video.addEventListener('seeked', resetFired);
+video.addEventListener('ended', () => { hint.hidden = false; hint.textContent = 'The end! Press Start show to watch again.'; furby.antenna(255, 255, 255); });
+seek.addEventListener('input', () => { if (video.duration) video.currentTime = seek.value / 1000 * video.duration; });
+document.getElementById('pauseBtn').onclick = () => { if (video.paused) video.play(); else video.pause(); };
+video.addEventListener('play', () => document.getElementById('pauseBtn').textContent = 'Pause');
+video.addEventListener('pause', () => document.getElementById('pauseBtn').textContent = 'Resume');
+
+// Fire reactions slightly early to cover Bluetooth delay.
+let lastRow = -1;
+function tick() {
+  const t = video.currentTime || 0;
+  document.getElementById('time').textContent = fmt(t) + ' / ' + fmt(video.duration || 0);
+  if (video.duration && document.activeElement !== seek) seek.value = t / video.duration * 1000;
+  if (!video.paused && !countdown.running) {
+    const early = (+document.getElementById('offset').value || 0) / 1000;
+    let changed = false;
+    for (const c of cues) {
+      if (!fired.has(c) && c.t - early <= t) { fired.add(c); fireCue(c); changed = true; }
+    }
+    if (changed) renderCues();
+  }
+  drawFx(performance.now());
+  requestAnimationFrame(tick);
+}
+
+// ---------------------------------------------------------------- Countdown
+// Our own countdown: pastel rings rippling out from the middle, a big number for each beat.
+const fx = document.getElementById('fx');
+const ctx = fx.getContext('2d');
+const COUNT_COLOURS = [
+  { a: '#d6b3ff', b: '#b98cf2', rgb: [200, 140, 255] },   // 3: lilac
+  { a: '#b6e2ff', b: '#86c4f0', rgb: [100, 190, 255] },   // 2: sky blue
+  { a: '#ffc4e3', b: '#f597c9', rgb: [255, 110, 190] },   // 1: pink
+];
+const countdown = { running: false, start: 0, beat: 1000, onDone: null };
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function sizeCanvas() {
+  const r = fx.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2);
+  fx.width = Math.round(r.width * d); fx.height = Math.round(r.height * d);
+}
+new ResizeObserver(sizeCanvas).observe(fx);
+
+function drawRings(now, pal, alpha) {
+  const w = fx.width, h = fx.height, cx = w / 2, cy = h / 2;
+  const maxR = Math.hypot(cx, cy) + 40;
+  const band = Math.max(w, h) / 14;
+  const phase = reduceMotion ? 0 : (now / 18) % (band * 2);
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = pal.a; ctx.fillRect(0, 0, w, h);
+  ctx.lineWidth = band * 0.62;
+  ctx.strokeStyle = pal.b;
+  const wob = reduceMotion ? 0 : now / 900;
+  for (let r = phase; r < maxR; r += band * 2) {
+    ctx.beginPath();
+    // A gentle wobble so the rings feel like they swirl.
+    for (let k = 0; k <= 64; k++) {
+      const ang = k / 64 * Math.PI * 2;
+      const rr = r + Math.sin(ang * 3 + wob + r / 90) * band * 0.12;
+      const x = cx + Math.cos(ang) * rr, y = cy + Math.sin(ang) * rr * 0.92;
+      k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.closePath(); ctx.stroke();
+  }
+  // soft glow in the middle
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 0.45);
+  g.addColorStop(0, 'rgba(255,255,255,0.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  ctx.globalAlpha = 1;
+}
+
+function drawNumber(n, p, pal) {
+  const w = fx.width, h = fx.height;
+  const pop = reduceMotion ? 1 : (p < 0.18 ? 0.6 + (p / 0.18) * 0.5 : 1.1 - Math.min(1, (p - 0.18) / 0.3) * 0.1);
+  const size = h * 0.42 * pop;
+  ctx.save();
+  ctx.translate(w / 2, h / 2 + size * 0.04);
+  ctx.font = `800 ${size}px "Baloo 2", "Trebuchet MS", sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = size * 0.09;
+  ctx.strokeStyle = `rgba(${pal.rgb.join(',')},0.9)`;
+  ctx.strokeText(String(n), 0, 0);
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = size * 0.06; ctx.shadowOffsetY = size * 0.03;
+  ctx.fillText(String(n), 0, 0);
+  ctx.restore();
+}
+
+function drawFx(now) {
+  const w = fx.width, h = fx.height;
+  ctx.clearRect(0, 0, w, h);
+  if (countdown.running) {
+    const el = now - countdown.start;
+    const i = Math.floor(el / countdown.beat);
+    if (i >= 3) {
+      // fade out over the start of the video
+      const f = 1 - Math.min(1, (el - 3 * countdown.beat) / 500);
+      if (f <= 0) { countdown.running = false; }
+      else drawRings(now, COUNT_COLOURS[2], f);
+      return;
+    }
+    drawRings(now, COUNT_COLOURS[i], 1);
+    drawNumber(3 - i, (el % countdown.beat) / countdown.beat, COUNT_COLOURS[i]);
+    if (countdown.lastBeat !== i) { countdown.lastBeat = i; onBeat(i); }
+    if (i === 2 && el > 3 * countdown.beat - 1) {}
+  } else if (!video.src) {
+    // idle stage before a video is loaded
+    drawRings(now, COUNT_COLOURS[0], 0.35);
+  }
+}
+
+let audio = null;
+function chime(freq, len) {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const t = audio.currentTime, o = audio.createOscillator(), o2 = audio.createOscillator(), g = audio.createGain();
+    o.type = 'sine'; o2.type = 'triangle';
+    o.frequency.value = freq; o2.frequency.value = freq * 2;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g); o2.connect(g); g.connect(audio.destination);
+    o.start(t); o2.start(t); o.stop(t + len); o2.stop(t + len);
+  } catch (e) {}
+}
+
+function onBeat(i) {
+  const notes = [523.25, 587.33, 659.25];   // C, D, E going up
+  chime(notes[i], 0.5);
+  furby.antenna(...COUNT_COLOURS[i].rgb);
+}
+
+function runCountdown(then) {
+  hint.hidden = true;
+  countdown.running = true; countdown.start = performance.now(); countdown.lastBeat = -1;
+  // after "1", play a higher chime and start the video
+  setTimeout(() => { chime(783.99, 0.9); if (then) then(); }, 3 * countdown.beat);
+}
+
+document.getElementById('startBtn').onclick = () => {
+  if (!video.src) { hint.hidden = false; hint.textContent = 'Load a video first, or press Just the countdown.'; return; }
+  video.pause(); video.currentTime = 0; fired.clear(); renderCues();
+  runCountdown(() => {
+    furby.antenna(255, 255, 255);
+    video.play().catch(e => log('Could not play: ' + e.message));
+  });
+};
+document.getElementById('countBtn').onclick = () => runCountdown(() => {
+  if (!video.src) { hint.hidden = false; hint.textContent = 'Load a video, add some reactions, then press Start show.'; }
+});
+
+// ---------------------------------------------------------------- Connect UI
+function log(s) { const el = document.getElementById('log'); el.textContent += s + '\n'; el.scrollTop = el.scrollHeight; }
+function updateStatus() {
+  document.getElementById('status').classList.toggle('on', furby.connected);
+  document.getElementById('statusText').textContent = furby.connected ? 'Furby connected' : 'Furby not connected';
+  document.getElementById('connectBtn').textContent = furby.connected ? 'Disconnect' : 'Connect Furby';
+}
+document.getElementById('connectBtn').onclick = async () => {
+  if (furby.connected) { furby.disconnect(); return; }
+  try {
+    log('Looking for a Furby…');
+    await furby.connect();
+    log('Connected!');
+    updateStatus();
+    furby.antenna(255, 127, 196);
+  } catch (e) { log('Could not connect: ' + e.message); }
+};
+if (!('bluetooth' in navigator)) {
+  document.getElementById('noBt').hidden = false;
+  document.getElementById('connectBtn').disabled = true;
+}
+
+// Start with the example show so the page shows what it does.
+cues = loadLocal() || EXAMPLE.map(c => ({ ...c }));
+if (loadLocal()) document.getElementById('cueSource').textContent = 'Saved in this browser';
+renderCues();
+log('Ready. Connect your Furby, load a video, and build your show.');
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
